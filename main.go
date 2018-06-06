@@ -35,6 +35,7 @@ func main() {
 		"ADD R1,R1,#1",
 		"ADD R0,R0,R1",
 		"ADD R0,R0,R1",
+		"HALT",
 	}
 	pc, memory := lc3as.Assemble(assembly)
 
@@ -51,7 +52,7 @@ func main() {
 	cycles := 0
 	fmt.Printf("\n%s\n", lc3)
 	timeStart := time.Now()
-	for pc != 0x300B {
+	for memory[pc] != 0xF025 { //Breakout on HALT instruction
 
 		pc, r, err = lc3.Step(memory[pc], m)
 		if err != nil {

@@ -43,6 +43,12 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		op := items[0]
 		switch op {
 
+		case "HALT":
+			instruction |= 0xF025
+			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			memory[currentPC] = instruction
+			currentPC++
+
 		case "AND":
 			instruction |= 0x5000
 
