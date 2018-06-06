@@ -11,9 +11,6 @@ type LC3 struct {
 	PC uint16
 
 	PSR PSR
-	N   bool
-	Z   bool
-	P   bool
 
 	Memory [65536]uint16
 }
@@ -91,11 +88,11 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 			if (imm5&0x10)>>4 == 1 {
 				imm5 = imm5 | 0xFFE0
 			}
-			fmt.Printf("  ADD R%d,R%d,#%d\n", dr, sr1, int16(imm5))
+			fmt.Printf("  Executing ADD R%d,R%d,#%d\n", dr, sr1, int16(imm5))
 			lc3.Reg[dr] = lc3.Reg[sr1] + imm5
 		} else {
 			sr2 := inst & 0x0007
-			fmt.Printf("ADD R%d,R%d,R%d\n", dr, sr1, sr2)
+			fmt.Printf("  Executing ADD R%d,R%d,R%d\n", dr, sr1, sr2)
 			lc3.Reg[dr] = lc3.Reg[sr1] + lc3.Reg[sr2]
 		}
 		lc3.PC++
@@ -110,11 +107,11 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 			if (imm5&0x10)>>4 == 1 {
 				imm5 = imm5 | 0xFFE0
 			}
-			fmt.Printf("  AND R%d,R%d,#%d\n", dr, sr1, int16(imm5))
+			fmt.Printf("  Executing AND R%d,R%d,#%d\n", dr, sr1, int16(imm5))
 			lc3.Reg[dr] = lc3.Reg[sr1] & imm5
 		} else {
 			sr2 := inst & 0x0007
-			fmt.Printf("AND R%d,R%d,R%d\n", dr, sr1, sr2)
+			fmt.Printf("  Executing AND R%d,R%d,R%d\n", dr, sr1, sr2)
 			lc3.Reg[dr] = lc3.Reg[sr1] & lc3.Reg[sr2]
 		}
 		lc3.PC++
@@ -128,7 +125,7 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 		if (PCoffset9&0x100)>>8 == 1 {
 			PCoffset9 = PCoffset9 | 0xFE00
 		}
-		fmt.Print("  BR")
+		fmt.Print("  Executing BR")
 		if n {
 			fmt.Print("n")
 		}
@@ -139,7 +136,7 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 			fmt.Print("p")
 		}
 		fmt.Printf(" #%d\n", int16(PCoffset9))
-		if (n && lc3.N) || (z && lc3.Z) || (p && lc3.P) {
+		if (n && lc3.PSR.N) || (z && lc3.PSR.Z) || (p && lc3.PSR.P) {
 			lc3.PC += PCoffset9
 		}
 

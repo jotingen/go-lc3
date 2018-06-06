@@ -32,6 +32,9 @@ func main() {
 		"AND R5,R5,#0",
 		"AND R6,R6,#0",
 		"AND R7,R7,#0",
+		"ADD R1,R1,#1",
+		"ADD R0,R0,R1",
+		"ADD R0,R0,R1",
 	}
 	pc, memory := lc3as.Assemble(assembly)
 
@@ -48,7 +51,7 @@ func main() {
 	cycles := 0
 	fmt.Printf("\n%s\n", lc3)
 	timeStart := time.Now()
-	for pc != 0x3008 {
+	for pc != 0x300B {
 
 		pc, r, err = lc3.Step(memory[pc], m)
 		if err != nil {
