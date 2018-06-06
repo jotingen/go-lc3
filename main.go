@@ -35,6 +35,10 @@ func main() {
 		"ADD R1,R1,#1",
 		"ADD R0,R0,R1",
 		"ADD R0,R0,R1",
+		"BRnzp SKIP",
+		"ADD R2,R0,R1",
+		"SKIP ADD R3,R0,R1",
+		"ADD R4,R0,R1",
 		"HALT",
 	}
 	pc, memory := lc3as.Assemble(assembly)
