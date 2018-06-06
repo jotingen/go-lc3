@@ -24,13 +24,12 @@ type Request struct {
 	Data    uint16
 }
 
-func (lc3 *LC3) Init() uint16 {
+func (lc3 *LC3) Init(pc uint16) {
 	for i := range lc3.Reg {
 		lc3.Reg[i] = uint16(rand.Intn(65536))
 	}
-	lc3.PC = 0x3000
-	fmt.Printf("Sending  PC: %04x\n", lc3.PC)
-	return lc3.PC
+	lc3.PC = pc
+	fmt.Printf("Set PC: %04x\n", lc3.PC)
 }
 
 func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {

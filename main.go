@@ -8,6 +8,7 @@ import (
 
 import (
 	"github.com/jotingen/go-lc3/lc3"
+	"github.com/jotingen/go-lc3/lc3as"
 )
 
 var (
@@ -21,20 +22,28 @@ func main() {
 	var m uint16
 
 	fmt.Println("vim-go")
+	assembly := []string{
+		".ORIG x3000",
+		"AND R0,R0,#0",
+		"AND R1,R1,#0",
+		"AND R2,R2,#0",
+	}
+	pc, memory := lc3as.Assemble(assembly)
+
 	lc3 := lc3.LC3{}
-	pc := lc3.Init()
+	lc3.Init(pc)
 
 	//Spoof some test instructions
-	memory[0x3000] = 0x103F //ADD R0,R0,#31
-	memory[0x3001] = 0x1001 //ADD R0,R0,R1
-	memory[0x3002] = 0x54A0 //AND R2,R2,#0
-	memory[0x3003] = 0x0E10 //BR (x3003 + x10)
-	memory[0x3013] = 0x56E0 //AND R3,R3,#0
+	//memory[0x3000] = 0x103F //ADD R0,R0,#31
+	//memory[0x3001] = 0x1001 //ADD R0,R0,R1
+	//memory[0x3002] = 0x54A0 //AND R2,R2,#0
+	//memory[0x3003] = 0x0E10 //BR (x3003 + x10)
+	//memory[0x3013] = 0x56E0 //AND R3,R3,#0
 
 	cycles := 0
 	timeStart := time.Now()
 	fmt.Printf("%s\n", lc3)
-	for pc != 0x3014 {
+	for pc != 0x3003 {
 
 		pc, r, err = lc3.Step(memory[pc], m)
 		if err != nil {
