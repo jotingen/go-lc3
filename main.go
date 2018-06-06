@@ -27,6 +27,11 @@ func main() {
 		"AND R0,R0,#0",
 		"AND R1,R1,#0",
 		"AND R2,R2,#0",
+		"AND R3,R3,#0",
+		"AND R4,R4,#0",
+		"AND R5,R5,#0",
+		"AND R6,R6,#0",
+		"AND R7,R7,#0",
 	}
 	pc, memory := lc3as.Assemble(assembly)
 
@@ -41,9 +46,9 @@ func main() {
 	//memory[0x3013] = 0x56E0 //AND R3,R3,#0
 
 	cycles := 0
+	fmt.Printf("\n%s\n", lc3)
 	timeStart := time.Now()
-	fmt.Printf("%s\n", lc3)
-	for pc != 0x3003 {
+	for pc != 0x3008 {
 
 		pc, r, err = lc3.Step(memory[pc], m)
 		if err != nil {
@@ -58,12 +63,11 @@ func main() {
 			}
 		}
 
-		fmt.Printf("%s\n", lc3)
-
 		cycles++
 
 	}
 	timeEnd := time.Now()
+	fmt.Printf("\n%s\n", lc3)
 
 	nanosecondsPerCycle := float64(timeEnd.Sub(timeStart)) / float64(cycles)
 	secondsPerCycle := float64(nanosecondsPerCycle) / 1000.0 / 1000.0 / 1000.0
