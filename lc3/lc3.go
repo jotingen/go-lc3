@@ -139,6 +139,7 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 		if (n && lc3.PSR.N) || (z && lc3.PSR.Z) || (p && lc3.PSR.P) {
 			lc3.PC += PCoffset9
 		}
+		lc3.PC++
 
 	default:
 		return lc3.PC, Request{}, fmt.Errorf("Op not recognized: x%x", op)

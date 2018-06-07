@@ -95,9 +95,7 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 	//Second pass
 	currentPC := pc
 	offset = 0
-	reReg := regexp.MustCompile(`^R(\d)$`)
-	reNum := regexp.MustCompile(`^#(-?\d+)$`)
-	for _, line := range assembly {
+	for i, line := range assembly {
 		instruction := uint16(0)
 		items := strings.Split(line, " ")
 		op := items[0]
@@ -113,38 +111,52 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "AND":
 			instruction |= 0x5000
 
-			operand := strings.Split(items[1], ",")
+			reAND1 := regexp.MustCompile(`^\s*AND\s+R(\d)\s*,\s*R(\d)\s*,\s*R(\d)`)
+			reAND2 := regexp.MustCompile(`^\s*AND\s+R(\d)\s*,\s*R(\d)\s*,\s*#(-?\d+)`)
+			if reAND1.MatchString(line) {
+				operands := reAND1.FindStringSubmatch(line)
 
-			dr := reReg.FindAllStringSubmatch(operand[0], -1)[0][1]
-			drVal, err := strconv.ParseUint(dr, 10, 3)
-			if err != nil {
-				fmt.Println("Error processing dr ", line)
-			}
-			instruction |= uint16(drVal) << 9
-
-			sr1 := reReg.FindAllStringSubmatch(operand[1], -1)[0][1]
-			sr1Val, err := strconv.ParseUint(sr1, 10, 3)
-			if err != nil {
-				fmt.Println("Error processing sr1 ", line)
-			}
-			instruction |= uint16(sr1Val) << 9
-
-			if reReg.MatchString(operand[2]) {
-				sr2 := reReg.FindAllStringSubmatch(operand[2], -1)[0][1]
-				sr2Val, err := strconv.ParseUint(sr2, 10, 3)
+				dr, err := processRegister(operands[1])
 				if err != nil {
-					fmt.Println("Error processing sr2 ", line)
+					fmt.Printf("Error processing DR %d: %s", i, line)
 				}
-				instruction |= uint16(sr2Val)
+
+				sr1, err := processRegister(operands[2])
+				if err != nil {
+					fmt.Printf("Error processing SR1 %d: %s", i, line)
+				}
+
+				sr2, err := processRegister(operands[3])
+				if err != nil {
+					fmt.Printf("Error processing SR2 %d: %s", i, line)
+				}
+
+				instruction |= (dr << 9) | (sr1 << 6) | sr2
+
+			} else if reAND2.MatchString(line) {
+				operands := reAND2.FindStringSubmatch(line)
+
+				dr, err := processRegister(operands[1])
+				if err != nil {
+					fmt.Printf("Error processing DR %d: %s", i, line)
+				}
+
+				sr1, err := processRegister(operands[2])
+				if err != nil {
+					fmt.Printf("Error processing SR1 %d: %s", i, line)
+				}
+
+				imm5, err := processImm5(operands[3])
+				if err != nil {
+					fmt.Printf("Error processing IMM5 %d: %s", i, line)
+				}
+
+				instruction |= (dr << 9) | (sr1 << 6) | 0x0020 | imm5
+
 			} else {
-				imm5 := reNum.FindAllStringSubmatch(operand[2], -1)[0][1]
-				imm5Val, err := strconv.ParseInt(imm5, 10, 5)
-				if err != nil {
-					fmt.Println("Error processing imm5 ", line)
-				}
-				instruction |= 1 << 5
-				instruction |= uint16(imm5Val)
+				fmt.Printf("Error processing line %d: %s", i, line)
 			}
+
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
 			currentPC++
@@ -153,38 +165,52 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "ADD":
 			instruction |= 0x1000
 
-			operand := strings.Split(items[1], ",")
+			reADD1 := regexp.MustCompile(`^\s*ADD\s+R(\d)\s*,\s*R(\d)\s*,\s*R(\d)`)
+			reADD2 := regexp.MustCompile(`^\s*ADD\s+R(\d)\s*,\s*R(\d)\s*,\s*#(-?\d+)`)
+			if reADD1.MatchString(line) {
+				operands := reADD1.FindStringSubmatch(line)
 
-			dr := reReg.FindAllStringSubmatch(operand[0], -1)[0][1]
-			drVal, err := strconv.ParseUint(dr, 10, 3)
-			if err != nil {
-				fmt.Println("Error processing dr ", line)
-			}
-			instruction |= uint16(drVal) << 9
-
-			sr1 := reReg.FindAllStringSubmatch(operand[1], -1)[0][1]
-			sr1Val, err := strconv.ParseUint(sr1, 10, 3)
-			if err != nil {
-				fmt.Println("Error processing sr1 ", line)
-			}
-			instruction |= uint16(sr1Val) << 9
-
-			if reReg.MatchString(operand[2]) {
-				sr2 := reReg.FindAllStringSubmatch(operand[2], -1)[0][1]
-				sr2Val, err := strconv.ParseUint(sr2, 10, 3)
+				dr, err := processRegister(operands[1])
 				if err != nil {
-					fmt.Println("Error processing sr2 ", line)
+					fmt.Printf("Error processing DR %d: %s", i, line)
 				}
-				instruction |= uint16(sr2Val)
+
+				sr1, err := processRegister(operands[2])
+				if err != nil {
+					fmt.Printf("Error processing SR1 %d: %s", i, line)
+				}
+
+				sr2, err := processRegister(operands[3])
+				if err != nil {
+					fmt.Printf("Error processing SR2 %d: %s", i, line)
+				}
+
+				instruction |= (dr << 9) | (sr1 << 6) | sr2
+
+			} else if reADD2.MatchString(line) {
+				operands := reADD2.FindStringSubmatch(line)
+
+				dr, err := processRegister(operands[1])
+				if err != nil {
+					fmt.Printf("Error processing DR %d: %s", i, line)
+				}
+
+				sr1, err := processRegister(operands[2])
+				if err != nil {
+					fmt.Printf("Error processing SR1 %d: %s", i, line)
+				}
+
+				imm5, err := processImm5(operands[3])
+				if err != nil {
+					fmt.Printf("Error processing IMM5 %d: %s", i, line)
+				}
+
+				instruction |= (dr << 9) | (sr1 << 6) | 0x0020 | imm5
+
 			} else {
-				imm5 := reNum.FindAllStringSubmatch(operand[2], -1)[0][1]
-				imm5Val, err := strconv.ParseInt(imm5, 10, 5)
-				if err != nil {
-					fmt.Println("Error processing imm5 ", line)
-				}
-				instruction |= 1 << 5
-				instruction |= uint16(imm5Val)
+				fmt.Printf("Error processing line %d: %s", i, line)
 			}
+
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
 			currentPC++
@@ -206,8 +232,61 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 				instruction |= 0x0700
 			}
 
-			operand := strings.Split(items[1], " ")
-			instruction |= uint16(table[operand[0]] - offset)
+			operands := strings.Split(items[1], " ")
+			instruction |= uint16(table[operands[0]]-offset-1) & 0x01FF
+
+			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			memory[currentPC] = instruction
+			currentPC++
+			offset++
+
+		case "JMP":
+			instruction |= 0xC000
+
+			operands := strings.Split(items[1], " ")
+
+			baseR, err := processRegister(operands[1])
+			if err != nil {
+				fmt.Printf("Error processing BaseR %d: %s", i, line)
+			}
+
+			instruction |= baseR << 6
+
+			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			memory[currentPC] = instruction
+			currentPC++
+			offset++
+
+		case "RET":
+			instruction |= 0xC1C0
+
+			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			memory[currentPC] = instruction
+			currentPC++
+			offset++
+
+		case "JSR":
+			instruction |= 0x4800
+
+			operands := strings.Split(items[1], " ")
+			instruction |= uint16(table[operands[0]]-offset-1) & 0x07FF
+
+			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			memory[currentPC] = instruction
+			currentPC++
+			offset++
+
+		case "JSRR":
+			instruction |= 0x4000
+
+			operands := strings.Split(items[1], " ")
+
+			baseR, err := processRegister(operands[1])
+			if err != nil {
+				fmt.Printf("Error processing BaseR %d: %s", i, line)
+			}
+
+			instruction |= baseR << 6
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -215,6 +294,23 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 			offset++
 
 		}
+
 	}
 	return
+}
+
+func processRegister(reg string) (uint16, error) {
+	regInt, err := strconv.Atoi(reg)
+	if err != nil {
+		return 0, err
+	}
+	return uint16(regInt) & 0x0007, nil
+}
+
+func processImm5(imm5 string) (uint16, error) {
+	imm5Int, err := strconv.Atoi(imm5)
+	if err != nil {
+		return 0, err
+	}
+	return uint16(imm5Int) & 0x001F, nil
 }
