@@ -1,4 +1,4 @@
-package lc3as
+package asm2obj
 
 import (
 	"fmt"

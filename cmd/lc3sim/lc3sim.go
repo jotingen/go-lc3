@@ -1,14 +1,15 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 	"time"
 )
 
 import (
+	"github.com/jotingen/go-lc3/asm2obj"
 	"github.com/jotingen/go-lc3/lc3"
-	"github.com/jotingen/go-lc3/lc3as"
 )
 
 var (
@@ -41,17 +42,31 @@ func main() {
 	}
 	pc, memory := processAssembly(assembly)
 
-	m, err := os.Create("mem.obj")
+	ascii, err := os.Create("mem.obj.ascii")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	defer m.Close()
+	defer ascii.Close()
 
 	for i := range memory {
-		m.WriteString(fmt.Sprintf("%04x:%04x\n", i, memory[i]))
+		b := make([]byte, 2)
+		binary.BigEndian.PutUint16(b, memory[i])
+		ascii.Write(b)
 	}
-	m.Sync()
+	ascii.Sync()
+
+	obj, err := os.Create("mem.obj")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer obj.Close()
+
+	for i := range memory {
+		obj.WriteString(fmt.Sprintf("%04x:%04x\n", i, memory[i]))
+	}
+	obj.Sync()
 
 	err = run(pc, memory)
 	if err != nil {
@@ -62,7 +77,7 @@ func main() {
 }
 
 func processAssembly(assembly []string) (pc uint16, memory [65536]uint16) {
-	return lc3as.Assemble(assembly)
+	return asm2obj.Assemble(assembly)
 }
 
 func run(pc uint16, memory [65536]uint16) (err error) {
