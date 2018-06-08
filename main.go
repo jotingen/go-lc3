@@ -41,7 +41,19 @@ func main() {
 	}
 	pc, memory := processAssembly(assembly)
 
-	err := run(pc, memory)
+	m, err := os.Create("mem.obj")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer m.Close()
+
+	for i := range memory {
+		m.WriteString(fmt.Sprintf("%04x:%04x\n", i, memory[i]))
+	}
+	m.Sync()
+
+	err = run(pc, memory)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
