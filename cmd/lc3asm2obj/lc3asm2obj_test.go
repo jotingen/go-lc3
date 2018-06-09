@@ -48,9 +48,6 @@ func runTest(t *testing.T, in, out, gold string) {
 			t.Errorf("%s", d)
 		}
 	}
-	//if err := ioutil.WriteFile(in+".lc3asm2obj", []byte(generated), 0666); err != nil {
-	//	t.Error(fmt.Sprintf("%+v", err))
-	//}
 }
 
 func TestProcessAssembly(t *testing.T) {
@@ -77,13 +74,13 @@ func TestProcessAssembly(t *testing.T) {
 }
 
 func diff(b1, b2 string, filename string) (data string, err error) {
-	f1, err := writeTempFile("", "svfmt", b1)
+	f1, err := writeTempFile("", "lc3asm2obj", b1)
 	if err != nil {
 		return
 	}
 	defer os.Remove(f1)
 
-	f2, err := writeTempFile("", "svfmt", b2)
+	f2, err := writeTempFile("", "lc3asm2obj", b2)
 	if err != nil {
 		return
 	}
@@ -102,14 +99,6 @@ func diff(b1, b2 string, filename string) (data string, err error) {
 }
 
 // replaceTempFilename replaces temporary filenames in diff with actual one.
-//
-// --- /tmp/svfmt3161453762017-02-03 19:13:00.280468375 -0500
-// +++ /tmp/svfmt6178828152017-02-03 19:13:00.280468375 -0500
-// ...
-// ->
-// --- path/to/file.go.orig2017-02-03 19:13:00.280468375 -0500
-// +++ path/to/file.go2017-02-03 19:13:00.280468375 -0500
-// ...
 func replaceTempFilename(diff string, filename string) (string, error) {
 	bs := strings.SplitN(diff, "\n", 3)
 	if len(bs) < 3 {
