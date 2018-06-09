@@ -50,16 +50,16 @@ func runTest(t *testing.T, in, out, gold string) {
 			t.Errorf("%s", d)
 		}
 	}
-	if err := ioutil.WriteFile(in+".lc3asm2obj", []byte(generated), 0666); err != nil {
-		t.Error(fmt.Sprintf("%+v", err))
-	}
+	//if err := ioutil.WriteFile(in+".lc3asm2obj", []byte(generated), 0666); err != nil {
+	//	t.Error(fmt.Sprintf("%+v", err))
+	//}
 }
 
-func Testlc3asm2obj(t *testing.T) {
+func TestProcessAssembly(t *testing.T) {
 
 	// determine input files
-	match, err := filepath.Glob("testdata/*")
-	t.Logf("%+v\n", match)
+	match, err := filepath.Glob("testdata/*.asm")
+	//t.Logf("%+v\n", match)
 	if err != nil {
 		t.Fatal(fmt.Sprintf("MATCH:%+v\n", err))
 	}
