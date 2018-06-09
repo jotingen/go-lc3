@@ -18,7 +18,7 @@ func runTest(t *testing.T, in, out, gold string) {
 	_, memory := processAssembly(in)
 	dumpASCII(out, memory)
 
-	generatedBytes, err := ioutil.ReadFile(gold)
+	generatedBytes, err := ioutil.ReadFile(out)
 	if err != nil {
 		t.Error(fmt.Sprintf("%+v", err))
 		return
@@ -34,10 +34,8 @@ func runTest(t *testing.T, in, out, gold string) {
 
 	if generated != expected {
 		if *update {
-			if in != out {
-				if err := ioutil.WriteFile(out, []byte(generated), 0666); err != nil {
-					t.Error(fmt.Sprintf("%+v", err))
-				}
+			if in != gold {
+				dumpASCII(gold, memory)
 				return
 			}
 			// in == out: don't accidentally destroy input
