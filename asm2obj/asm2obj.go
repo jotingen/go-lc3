@@ -7,22 +7,91 @@ import (
 	"strings"
 )
 
-func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
-	table := make(map[string]int)
-	reHex := regexp.MustCompile(`^0?x([0-9A-Fa-f]+)$`)
+var (
+	table = make(map[string]uint16)
+)
 
-	//First pass, built table
-	offset := 0
+func Assemble(assembly []string) (memory [65536]uint16) {
+	reSpaces := regexp.MustCompile(`[\s\t]+`)
+	reHex := regexp.MustCompile(`^0?x([0-9A-Fa-f]+)$`)
+	reDec := regexp.MustCompile(`^#?(-?[0-9A-Fa-f]+)$`)
+
+	//1st pass, remove comments, blank lines, multiple spaces
+	reComment := regexp.MustCompile(`;.*$`)
+	for i := 0; i < len(assembly); i++ {
+		assembly[i] = reComment.ReplaceAllString(assembly[i], "")
+		assembly[i] = strings.TrimSpace(assembly[i])
+		assembly[i] = reSpaces.ReplaceAllString(assembly[i], " ")
+		if assembly[i] == "" {
+			assembly = append(assembly[:i], assembly[i+1:]...)
+			i--
+		}
+	}
+
+	//2nd pass, move labels into same line
+	reLabel := regexp.MustCompile(`^\w+$`)
+	for i := 0; i < len(assembly); i++ {
+		if reLabel.MatchString(assembly[i]) {
+			switch assembly[i] {
+			case ".ORIG":
+			case ".FILL":
+			case ".BLKW":
+			case ".STRINGZ":
+			case ".END":
+			case "GETC":
+			case "OUT":
+			case "PUTS":
+			case "IN":
+			case "PUTSP":
+			case "HALT":
+			case "ADD":
+			case "AND":
+			case "BRn", "BRz", "BRp", "BR", "BRzp", "BRnp", "BRnz", "BRnzp":
+			case "JMP", "RET":
+			case "JSR", "JSRR":
+			case "LD":
+			case "LDI":
+			case "LDR":
+			case "NOT":
+			case "RTI":
+			case "ST":
+			case "STI":
+			case "STR":
+			case "TRAP":
+			default:
+				assembly[i+1] = strings.Join([]string{assembly[i], assembly[i+1]}, " ")
+				assembly = append(assembly[:i], assembly[i+1:]...)
+				i--
+			}
+		}
+	}
+
+	//3rd pass, build table
+	//Define ORIG to 0x3000 untile overridden
+	origin := uint16(0x3000)
+	offset := uint16(0)
 	for i, line := range assembly {
-		items := strings.Split(line, " ")
+		items := reSpaces.Split(line, 2)
 		switch items[0] {
 		case ".ORIG":
-			pcHex := reHex.FindAllStringSubmatch(items[1], -1)[0][1]
-			pcInt, err := strconv.ParseUint(pcHex, 16, 16)
-			if err != nil {
-				fmt.Println("Error processing .ORIG ", table[".ORIG"])
+			if reHex.MatchString(items[1]) {
+				pcHex := reHex.FindAllStringSubmatch(items[1], -1)[0][1]
+				pcInt, err := strconv.ParseUint(pcHex, 16, 16)
+				if err != nil {
+					fmt.Println("Error processing .ORIG ", line)
+				}
+				origin = uint16(pcInt)
+			} else if reDec.MatchString(items[1]) {
+				pcDec := reDec.FindAllStringSubmatch(items[1], -1)[0][1]
+				pcInt, err := strconv.ParseUint(pcDec, 10, 16)
+				if err != nil {
+					fmt.Println("Error processing .ORIG ", line)
+				}
+				origin = uint16(pcInt)
+			} else {
+				fmt.Println("Error processing .ORIG ", line)
 			}
-			table[items[0]] = int(pcInt)
+
 		case ".FILL":
 			offset++
 		case ".BLKW":
@@ -71,43 +140,61 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "TRAP":
 			offset++
 		default:
-			//If its a comment, ignore
-			//If its empty, ignore
-			//If its whitespace, ignore
-			//Else its a label, pop off and mark
-			split := strings.SplitN(line, " ", 2)
-			assembly[i] = split[1]
-			table[split[0]] = offset
+			//If not a command, assume it was a label
+			assembly[i] = items[1]
+			table[items[0]] = origin + offset
 			offset++
 		}
 	}
 
-	//If ORIG was not defined, assume x3000
-	if _, ok := table[".ORIG"]; !ok {
-		table[".ORIG"] = 0x3000
+	fmt.Println("Cleaned Code:")
+	for _, line := range assembly {
+		fmt.Println(line)
 	}
+	fmt.Println()
 
-	fmt.Printf("TABLE: %+v\n", table)
+	fmt.Println("Table:")
+	for key, value := range table {
+		fmt.Printf("%20s:x%04x\n", key, value)
+	}
+	fmt.Println()
 
-	//Process and set PC
-	pc = uint16(table[".ORIG"])
-
-	//Second pass
-	currentPC := pc
+	currentPC := origin
 	offset = 0
 	for i, line := range assembly {
+		fmt.Printf("Processing %d: %s\n", i, line)
 		instruction := uint16(0)
 		items := strings.Split(line, " ")
 		op := items[0]
 		switch op {
 
 		case ".FILL":
-			pcHex := reHex.FindAllStringSubmatch(items[1], -1)[0][1]
-			fillInt, err := strconv.ParseUint(pcHex, 16, 16)
-			if err != nil {
-				fmt.Println("Error processing .FILL ", line)
+			fill := uint16(0)
+			if reHex.MatchString(items[1]) {
+				fillHex := reHex.FindAllStringSubmatch(items[1], -1)[0][1]
+				fillInt, err := strconv.ParseUint(fillHex, 16, 16)
+				if err != nil {
+					fmt.Println("Error processing ", line)
+				}
+				fill = uint16(fillInt)
+			} else if reDec.MatchString(items[1]) {
+				fillDec := reDec.FindAllStringSubmatch(items[1], -1)[0][1]
+				fillInt, err := strconv.ParseUint(fillDec, 10, 16)
+				if err != nil {
+					fmt.Println("Error processing ", line)
+				}
+				fill = uint16(fillInt)
+			} else {
+				if _, ok := table[items[1]]; ok {
+					fillInt := table[items[1]]
+					fill = uint16(fillInt)
+				} else {
+					fmt.Println("Error processing ", line)
+					fmt.Printf("%s not found in lookup table\n", items[1])
+				}
 			}
-			instruction |= uint16(fillInt)
+			instruction |= fill
+			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -118,21 +205,26 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 				fmt.Println("Error processing .BLKW ", line)
 			}
 			for r := 0; r < count; r++ {
+				val := 0
 				if len(operands) >= 2 {
-					val, err := strconv.Atoi(operands[1])
+					val, err = strconv.Atoi(operands[1])
 					if err != nil {
 						fmt.Println("Error processing .BLKW ", line)
 					}
-					memory[currentPC] = uint16(val)
 				}
+				fmt.Printf("%04x:%04x ; %s\n", currentPC, val, line)
+				memory[currentPC] = uint16(val)
 				currentPC++
 				offset++
 			}
 		case ".STRINGZ":
-
-			s := items[1]
-			s = s[1 : len(s)-1] //Remove quotes
+			s, err := strconv.Unquote(strings.Join(items[1:], " "))
+			if err != nil {
+				fmt.Println("Error processing ", items[1])
+				fmt.Println(err)
+			}
 			for _, char := range s {
+				fmt.Printf("%04x:%04x ; %s\n", currentPC, uint16(char), ".STRINGZ "+strconv.Quote(string(char)))
 				memory[currentPC] = uint16(char)
 				currentPC++
 				offset++
@@ -291,7 +383,9 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "BRn", "BRz", "BRp", "BR", "BRzp", "BRnp", "BRnz", "BRnzp":
 			instruction |= 0x0000
 
-			reBR := regexp.MustCompile(`^\s*BRn?z?p?\s+(\w+)`)
+			line = replaceLabelAsOffset(line, currentPC)
+
+			reBR := regexp.MustCompile(`^\s*BRn?z?p?\s+#(-?\d+)`)
 			operands := reBR.FindStringSubmatch(line)
 
 			if strings.Contains(op, "n") {
@@ -307,7 +401,12 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 				instruction |= 0x0700
 			}
 
-			instruction |= uint16(table[operands[1]]-offset-1) & 0x01FF
+			pcOffset9, err := processOffset9(operands[1])
+			if err != nil {
+				fmt.Printf("Error processing PCOFFSET9 %d: %s", i, line)
+			}
+
+			instruction |= pcOffset9
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -343,10 +442,16 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "JSR":
 			instruction |= 0x4800
 
+			line = replaceLabelAsOffset(line, currentPC)
+
 			reJSR := regexp.MustCompile(`^\s*JMP\s+(\w)`)
 			operands := reJSR.FindStringSubmatch(line)
 
-			instruction |= uint16(table[operands[1]]-offset-1) & 0x07FF
+			pcOffset11, err := processOffset11(operands[1])
+			if err != nil {
+				fmt.Printf("Error processing PCOFFSET11 %d: %s", i, line)
+			}
+			instruction |= pcOffset11
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -373,7 +478,9 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "LD":
 			instruction |= 0x2000
 
-			reLD := regexp.MustCompile(`^\s*LD\s+R(\d)\s*,\s*(\w+)`)
+			line = replaceLabelAsOffset(line, currentPC)
+
+			reLD := regexp.MustCompile(`^\s*LD\s+R(\d)\s*,\s*#(-?\d+)`)
 			operands := reLD.FindStringSubmatch(line)
 
 			DR, err := processRegister(operands[1])
@@ -382,7 +489,11 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 			}
 			instruction |= DR << 9
 
-			instruction |= uint16(table[operands[2]]-offset-1) & 0x01FF
+			pcOffset9, err := processOffset9(operands[1])
+			if err != nil {
+				fmt.Printf("Error processing PCOFFSET9 %d: %s", i, line)
+			}
+			instruction |= pcOffset9
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -392,7 +503,9 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "LDI":
 			instruction |= 0xA000
 
-			reLDI := regexp.MustCompile(`^\s*LDI\s+R(\d)\s*,\s*(\w+)`)
+			line = replaceLabelAsOffset(line, currentPC)
+
+			reLDI := regexp.MustCompile(`^\s*LDI\s+R(\d)\s*,\s*#(-?\d+)`)
 			operands := reLDI.FindStringSubmatch(line)
 
 			DR, err := processRegister(operands[1])
@@ -401,7 +514,11 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 			}
 			instruction |= DR << 9
 
-			instruction |= uint16(table[operands[2]]-offset-1) & 0x01FF
+			pcOffset9, err := processOffset9(operands[1])
+			if err != nil {
+				fmt.Printf("Error processing PCOFFSET9 %d: %s", i, line)
+			}
+			instruction |= pcOffset9
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -411,7 +528,7 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "LDR":
 			instruction |= 0x6000
 
-			reLDR := regexp.MustCompile(`^\s*LDR\s+R(\d)\s*,\s*R(\d)\s*,\s*(\w+)`)
+			reLDR := regexp.MustCompile(`^\s*LDR\s+R(\d)\s*,\s*R(\d)\s*,\s*#(-?\d+)`)
 			operands := reLDR.FindStringSubmatch(line)
 
 			DR, err := processRegister(operands[1])
@@ -426,7 +543,11 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 			}
 			instruction |= baseR << 6
 
-			instruction |= uint16(table[operands[3]]-offset-1) & 0x003F
+			offset6, err := processOffset6(operands[3])
+			if err != nil {
+				fmt.Printf("Error processing OFFSET6 %d: %s", i, line)
+			}
+			instruction |= offset6
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -435,6 +556,8 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 
 		case "LEA":
 			instruction |= 0xE000
+
+			line = replaceLabelAsOffset(line, currentPC)
 
 			reLEA := regexp.MustCompile(`^\s*LEA\s+R(\d)\s*,\s*(\w+)`)
 			operands := reLEA.FindStringSubmatch(line)
@@ -445,7 +568,11 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 			}
 			instruction |= DR << 9
 
-			instruction |= uint16(table[operands[2]]-offset-1) & 0x01FF
+			pcOffset9, err := processOffset9(operands[1])
+			if err != nil {
+				fmt.Printf("Error processing PCOFFSET9 %d: %s", i, line)
+			}
+			instruction |= pcOffset9
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -483,7 +610,9 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "ST":
 			instruction |= 0x3000
 
-			reST := regexp.MustCompile(`^\s*ST\s+R(\d)\s*,\s*(\w+)`)
+			line = replaceLabelAsOffset(line, currentPC)
+
+			reST := regexp.MustCompile(`^\s*ST\s+R(\d)\s*,\s*#(-?\d+)`)
 			operands := reST.FindStringSubmatch(line)
 
 			SR, err := processRegister(operands[1])
@@ -492,7 +621,11 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 			}
 			instruction |= SR << 9
 
-			instruction |= uint16(table[operands[2]]-offset-1) & 0x01FF
+			pcOffset9, err := processOffset9(operands[1])
+			if err != nil {
+				fmt.Printf("Error processing PCOFFSET9 %d: %s", i, line)
+			}
+			instruction |= pcOffset9
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -502,7 +635,9 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "STI":
 			instruction |= 0xB000
 
-			reSTI := regexp.MustCompile(`^\s*STI\s+R(\d)\s*,\s*(\w+)`)
+			line = replaceLabelAsOffset(line, currentPC)
+
+			reSTI := regexp.MustCompile(`^\s*STI\s+R(\d)\s*,\s*#(-?\d+)`)
 			operands := reSTI.FindStringSubmatch(line)
 
 			SR, err := processRegister(operands[1])
@@ -511,7 +646,11 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 			}
 			instruction |= SR << 9
 
-			instruction |= uint16(table[operands[2]]-offset-1) & 0x01FF
+			pcOffset9, err := processOffset9(operands[1])
+			if err != nil {
+				fmt.Printf("Error processing PCOFFSET9 %d: %s", i, line)
+			}
+			instruction |= pcOffset9
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -521,7 +660,7 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "STR":
 			instruction |= 0x6000
 
-			reSTR := regexp.MustCompile(`^\s*STR\s+R(\d)\s*,\s*R(\d)\s*,\s*(\w+)`)
+			reSTR := regexp.MustCompile(`^\s*STR\s+R(\d)\s*,\s*R(\d)\s*,\s*#(-?\d+)`)
 			operands := reSTR.FindStringSubmatch(line)
 
 			SR, err := processRegister(operands[1])
@@ -536,7 +675,11 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 			}
 			instruction |= baseR << 6
 
-			instruction |= uint16(table[operands[3]]-offset-1) & 0x003F
+			offset6, err := processOffset6(operands[3])
+			if err != nil {
+				fmt.Printf("Error processing OFFSET6 %d: %s", i, line)
+			}
+			instruction |= offset6
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -580,4 +723,40 @@ func processImm5(imm5 string) (uint16, error) {
 		return 0, err
 	}
 	return uint16(imm5Int) & 0x001F, nil
+}
+
+func processOffset6(offset6 string) (uint16, error) {
+	offset6Int, err := strconv.Atoi(offset6)
+	if err != nil {
+		return 0, err
+	}
+	return uint16(offset6Int) & 0x003F, nil
+}
+
+func processOffset9(offset9 string) (uint16, error) {
+	offset9Int, err := strconv.Atoi(offset9)
+	if err != nil {
+		return 0, err
+	}
+	return uint16(offset9Int) & 0x01FF, nil
+}
+func processOffset11(offset11 string) (uint16, error) {
+	offset11Int, err := strconv.Atoi(offset11)
+	if err != nil {
+		return 0, err
+	}
+	return uint16(offset11Int) & 0x07FF, nil
+}
+
+func replaceLabelAsOffset(line string, currentPC uint16) string {
+	//fmt.Printf("Got: %s\n", line)
+	reLabel := regexp.MustCompile(`\w*$`)
+	if reLabel.MatchString(line) {
+		label := reLabel.FindAllString(line, 1)
+		if _, ok := table[label[0]]; ok {
+			line = reLabel.ReplaceAllString(line, fmt.Sprintf("#%d", int16(table[label[0]]-currentPC-1)))
+		}
+	}
+	//fmt.Printf("Created: %s\n", line)
+	return line
 }

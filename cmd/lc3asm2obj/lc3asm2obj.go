@@ -29,7 +29,7 @@ func main() {
 	flag.Parse()
 
 	fmt.Println(in, out, ascii)
-	_, memory := processAssembly(in)
+	memory := processAssembly(in)
 
 	if ascii {
 		if out == "" {
@@ -75,7 +75,7 @@ func main() {
 
 }
 
-func processAssembly(file string) (pc uint16, memory [65536]uint16) {
+func processAssembly(file string) (memory [65536]uint16) {
 	assembly, err := readLines(file)
 	if err != nil {
 		fmt.Println(err)
