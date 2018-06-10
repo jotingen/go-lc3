@@ -291,6 +291,9 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "BRn", "BRz", "BRp", "BR", "BRzp", "BRnp", "BRnz", "BRnzp":
 			instruction |= 0x0000
 
+			reBR := regexp.MustCompile(`^\s*BRn?z?p?\s+(\w+)`)
+			operands := reBR.FindStringSubmatch(line)
+
 			if strings.Contains(op, "n") {
 				instruction |= 0x0800
 			}
@@ -304,8 +307,7 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 				instruction |= 0x0700
 			}
 
-			operands := strings.Split(items[1], " ")
-			instruction |= uint16(table[operands[0]]-offset-1) & 0x01FF
+			instruction |= uint16(table[operands[1]]-offset-1) & 0x01FF
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -315,7 +317,8 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "JMP":
 			instruction |= 0xC000
 
-			operands := strings.Split(items[1], " ")
+			reJMP := regexp.MustCompile(`^\s*JMP\s+R(\d)`)
+			operands := reJMP.FindStringSubmatch(line)
 
 			baseR, err := processRegister(operands[1])
 			if err != nil {
@@ -340,9 +343,10 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "JSR":
 			instruction |= 0x4800
 
-			operands := strings.Split(items[1], " ")
+			reJSR := regexp.MustCompile(`^\s*JMP\s+(\w)`)
+			operands := reJSR.FindStringSubmatch(line)
 
-			instruction |= uint16(table[operands[0]]-offset-1) & 0x07FF
+			instruction |= uint16(table[operands[1]]-offset-1) & 0x07FF
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -352,9 +356,10 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "JSRR":
 			instruction |= 0x4000
 
-			operands := strings.Split(items[1], " ")
+			reJSRR := regexp.MustCompile(`^\s*JSRR\s+R(\d)`)
+			operands := reJSRR.FindStringSubmatch(line)
 
-			baseR, err := processRegister(operands[0])
+			baseR, err := processRegister(operands[1])
 			if err != nil {
 				fmt.Printf("Error processing BaseR %d: %s", i, line)
 			}
@@ -368,15 +373,16 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "LD":
 			instruction |= 0x2000
 
-			operands := strings.Split(items[1], " ")
+			reLD := regexp.MustCompile(`^\s*LD\s+R(\d)\s*,\s*(\w+)`)
+			operands := reLD.FindStringSubmatch(line)
 
-			DR, err := processRegister(operands[0])
+			DR, err := processRegister(operands[1])
 			if err != nil {
 				fmt.Printf("Error processing DR %d: %s", i, line)
 			}
 			instruction |= DR << 9
 
-			instruction |= uint16(table[operands[0]]-offset-1) & 0x01FF
+			instruction |= uint16(table[operands[2]]-offset-1) & 0x01FF
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -386,15 +392,16 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "LDI":
 			instruction |= 0xA000
 
-			operands := strings.Split(items[1], " ")
+			reLDI := regexp.MustCompile(`^\s*LDI\s+R(\d)\s*,\s*(\w+)`)
+			operands := reLDI.FindStringSubmatch(line)
 
-			DR, err := processRegister(operands[0])
+			DR, err := processRegister(operands[1])
 			if err != nil {
 				fmt.Printf("Error processing DR %d: %s", i, line)
 			}
 			instruction |= DR << 9
 
-			instruction |= uint16(table[operands[1]]-offset-1) & 0x01FF
+			instruction |= uint16(table[operands[2]]-offset-1) & 0x01FF
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -404,21 +411,22 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "LDR":
 			instruction |= 0x6000
 
-			operands := strings.Split(items[1], " ")
+			reLDR := regexp.MustCompile(`^\s*LDR\s+R(\d)\s*,\s*R(\d)\s*,\s*(\w+)`)
+			operands := reLDR.FindStringSubmatch(line)
 
-			DR, err := processRegister(operands[0])
+			DR, err := processRegister(operands[1])
 			if err != nil {
 				fmt.Printf("Error processing DR %d: %s", i, line)
 			}
 			instruction |= DR << 9
 
-			baseR, err := processRegister(operands[1])
+			baseR, err := processRegister(operands[2])
 			if err != nil {
 				fmt.Printf("Error processing baseR %d: %s", i, line)
 			}
 			instruction |= baseR << 6
 
-			instruction |= uint16(table[operands[2]]-offset-1) & 0x003F
+			instruction |= uint16(table[operands[3]]-offset-1) & 0x003F
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -428,15 +436,16 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "LEA":
 			instruction |= 0xE000
 
-			operands := strings.Split(items[1], " ")
+			reLEA := regexp.MustCompile(`^\s*LEA\s+R(\d)\s*,\s*(\w+)`)
+			operands := reLEA.FindStringSubmatch(line)
 
-			DR, err := processRegister(operands[0])
+			DR, err := processRegister(operands[1])
 			if err != nil {
 				fmt.Printf("Error processing DR %d: %s", i, line)
 			}
 			instruction |= DR << 9
 
-			instruction |= uint16(table[operands[1]]-offset-1) & 0x01FF
+			instruction |= uint16(table[operands[2]]-offset-1) & 0x01FF
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -446,15 +455,16 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "NOT":
 			instruction |= 0x9000
 
-			operands := strings.Split(items[1], " ")
+			reNOT := regexp.MustCompile(`^\s*NOT\s+R(\d)\s*,\s*R(\d)`)
+			operands := reNOT.FindStringSubmatch(line)
 
-			DR, err := processRegister(operands[0])
+			DR, err := processRegister(operands[1])
 			if err != nil {
 				fmt.Printf("Error processing DR %d: %s", i, line)
 			}
 			instruction |= DR << 9
 
-			SR, err := processRegister(operands[1])
+			SR, err := processRegister(operands[2])
 			if err != nil {
 				fmt.Printf("Error processing SR %d: %s", i, line)
 			}
@@ -473,15 +483,16 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "ST":
 			instruction |= 0x3000
 
-			operands := strings.Split(items[1], " ")
+			reST := regexp.MustCompile(`^\s*ST\s+R(\d)\s*,\s*(\w+)`)
+			operands := reST.FindStringSubmatch(line)
 
-			SR, err := processRegister(operands[0])
+			SR, err := processRegister(operands[1])
 			if err != nil {
 				fmt.Printf("Error processing SR %d: %s", i, line)
 			}
 			instruction |= SR << 9
 
-			instruction |= uint16(table[operands[1]]-offset-1) & 0x01FF
+			instruction |= uint16(table[operands[2]]-offset-1) & 0x01FF
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -491,15 +502,16 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "STI":
 			instruction |= 0xB000
 
-			operands := strings.Split(items[1], " ")
+			reSTI := regexp.MustCompile(`^\s*STI\s+R(\d)\s*,\s*(\w+)`)
+			operands := reSTI.FindStringSubmatch(line)
 
-			SR, err := processRegister(operands[0])
+			SR, err := processRegister(operands[1])
 			if err != nil {
 				fmt.Printf("Error processing SR %d: %s", i, line)
 			}
 			instruction |= SR << 9
 
-			instruction |= uint16(table[operands[1]]-offset-1) & 0x01FF
+			instruction |= uint16(table[operands[2]]-offset-1) & 0x01FF
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -509,21 +521,22 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "STR":
 			instruction |= 0x6000
 
-			operands := strings.Split(items[1], " ")
+			reSTR := regexp.MustCompile(`^\s*STR\s+R(\d)\s*,\s*R(\d)\s*,\s*(\w+)`)
+			operands := reSTR.FindStringSubmatch(line)
 
-			SR, err := processRegister(operands[0])
+			SR, err := processRegister(operands[1])
 			if err != nil {
 				fmt.Printf("Error processing SR %d: %s", i, line)
 			}
 			instruction |= SR << 9
 
-			baseR, err := processRegister(operands[1])
+			baseR, err := processRegister(operands[2])
 			if err != nil {
 				fmt.Printf("Error processing baseR %d: %s", i, line)
 			}
 			instruction |= baseR << 6
 
-			instruction |= uint16(table[operands[2]]-offset-1) & 0x003F
+			instruction |= uint16(table[operands[3]]-offset-1) & 0x003F
 
 			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
 			memory[currentPC] = instruction
@@ -533,7 +546,10 @@ func Assemble(assembly []string) (pc uint16, memory [65536]uint16) {
 		case "TRAP":
 			instruction |= 0xF000
 
-			trapVect8Int, err := strconv.Atoi(items[1])
+			reSTR := regexp.MustCompile(`^\s*TRAP\s+(\w+)`)
+			operands := reSTR.FindStringSubmatch(line)
+
+			trapVect8Int, err := strconv.Atoi(operands[1])
 			if err != nil {
 				fmt.Printf("Error processing TRAP %d: %s", i, line)
 			}

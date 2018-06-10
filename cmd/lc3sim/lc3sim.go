@@ -38,6 +38,9 @@ func main() {
 		"ADD R7,R7,#-5",
 		"LOOP ADD R7,R7,#1",
 		"BRn LOOP",
+		"LD R5,LOOP",
+		"NOT R4,R4",
+		"ADD R4,R4,#1",
 		"HALT",
 	}
 	pc, memory := processAssembly(assembly)
@@ -91,7 +94,7 @@ func run(pc uint16, memory [65536]uint16) (err error) {
 
 	cycles := 0
 	timeStart := time.Now()
-	for memory[pc] != 0xF025 { //Breakout on HALT instruction
+	for pc != 0x0025 { //Breakout when PC goes to HALT address
 
 		pc, r, err = lc3.Step(memory[pc], m)
 		if err != nil {
