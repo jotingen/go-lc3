@@ -398,7 +398,7 @@ func Assemble(assembly []string) (memory [65536]uint16) {
 				instruction |= 0x0200
 			}
 			if op == "BR" {
-				instruction |= 0x0700
+				instruction |= 0x0E00
 			}
 
 			pcOffset9, err := processOffset9(operands[1])
@@ -489,7 +489,7 @@ func Assemble(assembly []string) (memory [65536]uint16) {
 			}
 			instruction |= DR << 9
 
-			pcOffset9, err := processOffset9(operands[1])
+			pcOffset9, err := processOffset9(operands[2])
 			if err != nil {
 				fmt.Printf("Error processing PCOFFSET9 %d: %s", i, line)
 			}
@@ -514,7 +514,7 @@ func Assemble(assembly []string) (memory [65536]uint16) {
 			}
 			instruction |= DR << 9
 
-			pcOffset9, err := processOffset9(operands[1])
+			pcOffset9, err := processOffset9(operands[2])
 			if err != nil {
 				fmt.Printf("Error processing PCOFFSET9 %d: %s", i, line)
 			}
@@ -568,7 +568,7 @@ func Assemble(assembly []string) (memory [65536]uint16) {
 			}
 			instruction |= DR << 9
 
-			pcOffset9, err := processOffset9(operands[1])
+			pcOffset9, err := processOffset9(operands[2])
 			if err != nil {
 				fmt.Printf("Error processing PCOFFSET9 %d: %s", i, line)
 			}
@@ -621,7 +621,7 @@ func Assemble(assembly []string) (memory [65536]uint16) {
 			}
 			instruction |= SR << 9
 
-			pcOffset9, err := processOffset9(operands[1])
+			pcOffset9, err := processOffset9(operands[2])
 			if err != nil {
 				fmt.Printf("Error processing PCOFFSET9 %d: %s", i, line)
 			}
@@ -646,7 +646,7 @@ func Assemble(assembly []string) (memory [65536]uint16) {
 			}
 			instruction |= SR << 9
 
-			pcOffset9, err := processOffset9(operands[1])
+			pcOffset9, err := processOffset9(operands[2])
 			if err != nil {
 				fmt.Printf("Error processing PCOFFSET9 %d: %s", i, line)
 			}
@@ -658,7 +658,7 @@ func Assemble(assembly []string) (memory [65536]uint16) {
 			offset++
 
 		case "STR":
-			instruction |= 0x6000
+			instruction |= 0x7000
 
 			reSTR := regexp.MustCompile(`^\s*STR\s+R(\d)\s*,\s*R(\d)\s*,\s*#(-?\d+)`)
 			operands := reSTR.FindStringSubmatch(line)
