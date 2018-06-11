@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/binary"
+	//"encoding/binary"
 	"fmt"
 	"os"
 	"time"
@@ -17,9 +17,8 @@ var (
 )
 
 func main() {
-	fmt.Println("vim-go")
 	assembly := []string{
-		".ORIG x3000",
+		".ORIG x0200",
 		"AND R0,R0,#0",
 		"AND R1,R1,#0",
 		"AND R2,R2,#0",
@@ -43,35 +42,35 @@ func main() {
 		"ADD R4,R4,#1",
 		"HALT",
 	}
-	pc, memory := processAssembly(assembly)
+	memory := processAssembly(assembly)
 
-	ascii, err := os.Create("mem.obj.ascii")
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	defer ascii.Close()
+	//ascii, err := os.Create("mem.obj.ascii")
+	//if err != nil {
+	//	fmt.Println(err)
+	//	os.Exit(1)
+	//}
+	//defer ascii.Close()
 
-	for i := range memory {
-		b := make([]byte, 2)
-		binary.BigEndian.PutUint16(b, memory[i])
-		ascii.Write(b)
-	}
-	ascii.Sync()
+	//for i := range memory {
+	//	b := make([]byte, 2)
+	//	binary.BigEndian.PutUint16(b, memory[i])
+	//	ascii.Write(b)
+	//}
+	//ascii.Sync()
 
-	obj, err := os.Create("mem.obj")
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	defer obj.Close()
+	//obj, err := os.Create("mem.obj")
+	//if err != nil {
+	//	fmt.Println(err)
+	//	os.Exit(1)
+	//}
+	//defer obj.Close()
 
-	for i := range memory {
-		obj.WriteString(fmt.Sprintf("%04x:%04x\n", i, memory[i]))
-	}
-	obj.Sync()
+	//for i := range memory {
+	//	obj.WriteString(fmt.Sprintf("%04x:%04x\n", i, memory[i]))
+	//}
+	//obj.Sync()
 
-	err = run(pc, memory)
+	err := run(memory)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -79,13 +78,15 @@ func main() {
 
 }
 
-func processAssembly(assembly []string) (pc uint16, memory [65536]uint16) {
+func processAssembly(assembly []string) (memory [65536]uint16) {
 	return asm2obj.Assemble(assembly)
 }
 
-func run(pc uint16, memory [65536]uint16) (err error) {
+func run(memory [65536]uint16) (err error) {
 	var r lc3.Request
 	var m uint16
+
+	pc := uint16(0x0200)
 
 	lc3 := lc3.LC3{}
 	lc3.Init(pc)
