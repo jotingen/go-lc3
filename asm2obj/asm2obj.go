@@ -11,7 +11,14 @@ var (
 	table = make(map[string]uint16)
 )
 
-func Assemble(assembly []string) (memory [65536]uint16) {
+type Memory [65536]uint16
+
+func Assemble(assembly []string) (memory Memory) {
+	assemble(assembly, &memory)
+	return
+}
+
+func assemble(assembly []string, memory *Memory) {
 	reSpaces := regexp.MustCompile(`[\s\t]+`)
 	reHex := regexp.MustCompile(`^0?x([0-9A-Fa-f]+)$`)
 	reDec := regexp.MustCompile(`^#?(-?[0-9A-Fa-f]+)$`)
