@@ -8,15 +8,26 @@ ADD R5,R4,R5  ;End address stored in R5
 AND R0,R0,#0
 ADD R0,R0,#9 ;LFSR
 
+REPEAT
+LD R4,DISPLAY ;Address stored in R4
 START
-	STR R0,R4,#0 ;Send pixel       
+	;Determine whether or not to create cell based on mask of LFSR
+	LD R1,MASK
+	AND R1,R1,R0
+	BRz MASK_WAS_0
+	AND R1,R1,#0
+	NOT R1,R1
+	MASK_WAS_0
+
+	STR R1,R4,#0 ;Send pixel       
 	JSR LFSR     ;Update LFSR for next pixel
 	ADD R4,R4,#1 ;Increment display address
         NOT R3,R4    ;Subtract current address from max address
 	ADD R3,R3,#1
 	ADD R3,R3,R5
-	BRnz END     ;Break out of loop if current address >= max address
+	BRnz REPEAT     ;Break out of loop if current address >= max address
         JSR START
+	MASK .FILL 0x1010
 END
 	
 ;JSR XOR

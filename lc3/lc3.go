@@ -72,11 +72,11 @@ func (lc3 *LC3) Init(pc uint16) {
 		lc3.Reg[i] = uint16(rand.Intn(65536))
 	}
 	lc3.PC = pc
-	fmt.Printf("Set PC: %04x\n", lc3.PC)
+	//fmt.Printf("Set PC: %04x\n", lc3.PC)
 }
 
 func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
-	fmt.Printf("Recieved Inst:x%04x Data:x%04x\n", inst, data)
+	//fmt.Printf("Recieved Inst:x%04x Data:x%04x\n", inst, data)
 
 	//For now, if the instruction is unrecognized, panic
 	op := extract1C(inst, 15, 12)
@@ -88,11 +88,11 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 		bit5 := extract1C(inst, 5, 5)
 		if bit5 == 1 {
 			imm5 := extract2C(inst, 4, 0)
-			fmt.Printf("  Executing ADD R%d,R%d,#%d\n", dr, sr1, int16(imm5))
+			//fmt.Printf("  Executing ADD R%d,R%d,#%d\n", dr, sr1, int16(imm5))
 			lc3.Reg[dr] = lc3.Reg[sr1] + imm5
 		} else {
 			sr2 := extract1C(inst, 2, 0)
-			fmt.Printf("  Executing ADD R%d,R%d,R%d\n", dr, sr1, sr2)
+			//fmt.Printf("  Executing ADD R%d,R%d,R%d\n", dr, sr1, sr2)
 			lc3.Reg[dr] = lc3.Reg[sr1] + lc3.Reg[sr2]
 		}
 		lc3.PC++
@@ -104,11 +104,11 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 		bit5 := extract1C(inst, 5, 5)
 		if bit5 == 1 {
 			imm5 := extract2C(inst, 4, 0)
-			fmt.Printf("  Executing AND R%d,R%d,#%d\n", dr, sr1, int16(imm5))
+			//fmt.Printf("  Executing AND R%d,R%d,#%d\n", dr, sr1, int16(imm5))
 			lc3.Reg[dr] = lc3.Reg[sr1] & imm5
 		} else {
 			sr2 := extract1C(inst, 2, 0)
-			fmt.Printf("  Executing AND R%d,R%d,R%d\n", dr, sr1, sr2)
+			//fmt.Printf("  Executing AND R%d,R%d,R%d\n", dr, sr1, sr2)
 			lc3.Reg[dr] = lc3.Reg[sr1] & lc3.Reg[sr2]
 		}
 		lc3.PC++
@@ -119,17 +119,17 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 		z := extract1C(inst, 10, 10) == 1
 		p := extract1C(inst, 9, 9) == 1
 		PCoffset9 := extract2C(inst, 8, 0)
-		fmt.Print("  Executing BR")
+		//fmt.Print("  Executing BR")
 		if n {
-			fmt.Print("n")
+			//fmt.Print("n")
 		}
 		if z {
-			fmt.Print("z")
+			//fmt.Print("z")
 		}
 		if p {
-			fmt.Print("p")
+			//fmt.Print("p")
 		}
-		fmt.Printf(" #%d\n", int16(PCoffset9))
+		//fmt.Printf(" #%d\n", int16(PCoffset9))
 		if (n && lc3.PSR.N) || (z && lc3.PSR.Z) || (p && lc3.PSR.P) {
 			lc3.PC += PCoffset9
 		}
@@ -137,7 +137,7 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 
 	case 0xC: //JMP/RET
 		baseR := extract1C(inst, 8, 6)
-		fmt.Printf("  Executing JMP R%d\n", baseR)
+		//fmt.Printf("  Executing JMP R%d\n", baseR)
 		lc3.PC = lc3.Reg[baseR]
 
 	case 0x4: //JSR/JSRR
@@ -145,13 +145,13 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 		if bit11 == 1 {
 
 			PCoffset11 := extract2C(inst, 10, 0)
-			fmt.Printf("  Executing JSR #%d\n", int16(PCoffset11))
+			//fmt.Printf("  Executing JSR #%d\n", int16(PCoffset11))
 			lc3.Reg[7] = lc3.PC + 1
 			lc3.PC += PCoffset11 + 1
 
 		} else {
 			baseR := extract2C(inst, 8, 6)
-			fmt.Printf("  Executing JSRR R%d\n", baseR)
+			//fmt.Printf("  Executing JSRR R%d\n", baseR)
 			lc3.Reg[7] = lc3.PC + 1
 			lc3.PC = lc3.Reg[baseR]
 		}
@@ -160,16 +160,16 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 		dr := extract1C(inst, 11, 9)
 		PCoffset9 := extract2C(inst, 8, 0)
 		if lc3.RequestStg1 {
-			fmt.Printf("  Executing LD R%d #%d\n", dr, int16(PCoffset9))
+			//fmt.Printf("  Executing LD R%d #%d\n", dr, int16(PCoffset9))
 			lc3.RequestStg1 = false
 			lc3.PC++
 			lc3.Reg[dr] = data
 			lc3.setCC(lc3.Reg[dr])
 		} else {
-			fmt.Printf("  Requesting LD R%d #%d\n", dr, int16(PCoffset9))
+			//fmt.Printf("  Requesting LD R%d #%d\n", dr, int16(PCoffset9))
 			lc3.RequestStg1 = true
 			req := Request{Vld: true, RnW: true, Address: lc3.PC + 1 + PCoffset9}
-			fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
+			//fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
 			return lc3.PC, req, nil
 		}
 
@@ -177,23 +177,23 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 		dr := extract1C(inst, 11, 9)
 		PCoffset9 := extract2C(inst, 8, 0)
 		if lc3.RequestStg2 {
-			fmt.Printf("  Executing LDI R%d #%d\n", dr, int16(PCoffset9))
+			//fmt.Printf("  Executing LDI R%d #%d\n", dr, int16(PCoffset9))
 			lc3.RequestStg2 = false
 			lc3.PC++
 			lc3.Reg[dr] = data
 			lc3.setCC(lc3.Reg[dr])
 		} else if lc3.RequestStg1 {
-			fmt.Printf("  Requesting LDI R%d #%d\n", dr, int16(PCoffset9))
+			//fmt.Printf("  Requesting LDI R%d #%d\n", dr, int16(PCoffset9))
 			lc3.RequestStg1 = false
 			lc3.RequestStg2 = true
 			req := Request{Vld: true, RnW: true, Address: data}
-			fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
+			//fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
 			return lc3.PC, req, nil
 		} else {
-			fmt.Printf("  Requesting LDI R%d #%d\n", dr, int16(PCoffset9))
+			//fmt.Printf("  Requesting LDI R%d #%d\n", dr, int16(PCoffset9))
 			lc3.RequestStg1 = true
 			req := Request{Vld: true, RnW: true, Address: lc3.PC + 1 + PCoffset9}
-			fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
+			//fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
 			return lc3.PC, req, nil
 		}
 
@@ -202,23 +202,23 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 		baseR := extract1C(inst, 8, 6)
 		offset6 := extract2C(inst, 5, 0)
 		if lc3.RequestStg1 {
-			fmt.Printf("  Executing LDR R%d R%d #%d\n", dr, baseR, int16(offset6))
+			//fmt.Printf("  Executing LDR R%d R%d #%d\n", dr, baseR, int16(offset6))
 			lc3.RequestStg1 = false
 			lc3.PC++
 			lc3.Reg[dr] = data
 			lc3.setCC(lc3.Reg[dr])
 		} else {
-			fmt.Printf("  Requesting LDR R%d R%d #%d\n", dr, baseR, int16(offset6))
+			//fmt.Printf("  Requesting LDR R%d R%d #%d\n", dr, baseR, int16(offset6))
 			lc3.RequestStg1 = true
 			req := Request{Vld: true, RnW: true, Address: lc3.Reg[baseR] + offset6}
-			fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
+			//fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
 			return lc3.PC, req, nil
 		}
 
 	case 0xE: //LEA
 		dr := extract1C(inst, 11, 9)
 		PCoffset9 := extract2C(inst, 8, 0)
-		fmt.Printf("  Executing LEA R%d #%d\n", dr, int16(PCoffset9))
+		//fmt.Printf("  Executing LEA R%d #%d\n", dr, int16(PCoffset9))
 		lc3.PC++
 		lc3.Reg[dr] = lc3.PC + PCoffset9
 		lc3.setCC(lc3.Reg[dr])
@@ -226,7 +226,7 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 	case 0x9: //NOT
 		dr := extract1C(inst, 11, 9)
 		sr := extract1C(inst, 8, 6)
-		fmt.Printf("  Executing NOT R%d R%d\n", dr, sr)
+		//fmt.Printf("  Executing NOT R%d R%d\n", dr, sr)
 		lc3.PC++
 		lc3.Reg[dr] = ^lc3.Reg[sr]
 		lc3.setCC(lc3.Reg[dr])
@@ -236,7 +236,7 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 		if !lc3.PSR.Privilege {
 
 			if lc3.RequestStg2 {
-				fmt.Printf("  Executing RTI\n")
+				//fmt.Printf("  Executing RTI\n")
 				lc3.RequestStg2 = false
 				lc3.PC = lc3.Temp
 				lc3.Reg[6]++
@@ -246,19 +246,19 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 				lc3.PSR.Z = extract1C(data, 1, 1) == 1
 				lc3.PSR.P = extract1C(data, 0, 0) == 1
 			} else if lc3.RequestStg1 {
-				fmt.Printf("  Requesting RTI\n")
+				//fmt.Printf("  Requesting RTI\n")
 				lc3.RequestStg1 = false
 				lc3.RequestStg2 = true
 				lc3.Temp = data
 				lc3.Reg[6]++
 				req := Request{Vld: true, RnW: true, Address: lc3.Reg[6]}
-				fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
+				//fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
 				return lc3.PC, req, nil
 			} else {
-				fmt.Printf("  Requesting RTI\n")
+				//fmt.Printf("  Requesting RTI\n")
 				lc3.RequestStg1 = true
 				req := Request{Vld: true, RnW: true, Address: lc3.Reg[6]}
-				fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
+				//fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
 				return lc3.PC, req, nil
 			}
 
@@ -270,27 +270,27 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 	case 0x3: //ST
 		sr := extract1C(inst, 11, 9)
 		PCoffset9 := extract2C(inst, 8, 0)
-		fmt.Printf("  Executing ST R%d #%d\n", sr, int16(PCoffset9))
+		//fmt.Printf("  Executing ST R%d #%d\n", sr, int16(PCoffset9))
 		lc3.PC++
 		req := Request{Vld: true, RnW: false, Address: lc3.PC + PCoffset9, Data: lc3.Reg[sr]}
-		fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
+		//fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
 		return lc3.PC, req, nil
 
 	case 0xB: //STI
 		sr := extract1C(inst, 11, 9)
 		PCoffset9 := extract2C(inst, 8, 0)
 		if lc3.RequestStg1 {
-			fmt.Printf("  Executing STI R%d #%d\n", sr, int16(PCoffset9))
+			//fmt.Printf("  Executing STI R%d #%d\n", sr, int16(PCoffset9))
 			lc3.RequestStg1 = false
 			lc3.PC++
 			req := Request{Vld: true, RnW: false, Address: data, Data: lc3.Reg[sr]}
-			fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
+			//fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
 			return lc3.PC, req, nil
 		} else {
-			fmt.Printf("  Requesting STI R%d #%d\n", sr, int16(PCoffset9))
+			//fmt.Printf("  Requesting STI R%d #%d\n", sr, int16(PCoffset9))
 			lc3.RequestStg1 = true
 			req := Request{Vld: true, RnW: true, Address: lc3.PC + 1 + PCoffset9}
-			fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
+			//fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
 			return lc3.PC, req, nil
 		}
 
@@ -298,24 +298,24 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 		sr := extract1C(inst, 11, 9)
 		baseR := extract1C(inst, 8, 6)
 		offset6 := extract2C(inst, 5, 0)
-		fmt.Printf("  Executing ST R%d R%d #%d\n", sr, baseR, int16(offset6))
+		//fmt.Printf("  Executing ST R%d R%d #%d\n", sr, baseR, int16(offset6))
 		lc3.PC++
 		req := Request{Vld: true, RnW: false, Address: lc3.Reg[baseR] + offset6, Data: lc3.Reg[sr]}
-		fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
+		//fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
 		return lc3.PC, req, nil
 
 	case 0xF: //TRAP
 		trapvect8 := extract1C(inst, 7, 0)
 		if lc3.RequestStg1 {
-			fmt.Printf("  Executing TRAP #%d\n", int16(trapvect8))
+			//fmt.Printf("  Executing TRAP #%d\n", int16(trapvect8))
 			lc3.RequestStg1 = false
 			lc3.Reg[7] = lc3.PC + 1
 			lc3.PC = data
 		} else {
-			fmt.Printf("  Requesting TRAP #%d\n", int16(trapvect8))
+			//fmt.Printf("  Requesting TRAP #%d\n", int16(trapvect8))
 			lc3.RequestStg1 = true
 			req := Request{Vld: true, RnW: true, Address: trapvect8}
-			fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
+			//fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, req)
 			return lc3.PC, req, nil
 		}
 
@@ -324,7 +324,7 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 
 	}
 
-	fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, Request{})
+	//fmt.Printf("Sending  PC:x%04x Req:%+v\n", lc3.PC, Request{})
 	return lc3.PC, Request{}, nil
 }
 

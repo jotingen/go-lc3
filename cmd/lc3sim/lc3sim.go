@@ -10,6 +10,7 @@ import (
 )
 
 import (
+	"github.com/dustin/go-humanize"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
@@ -124,7 +125,8 @@ func run() {
 		nanosecondsPerCycle := float64(timeEnd.Sub(timeStart)) / float64(cycles)
 		secondsPerCycle := float64(nanosecondsPerCycle) / 1000.0 / 1000.0 / 1000.0
 		hertz := 1 / secondsPerCycle
-		fmt.Printf("%dcycles/%s = %1.0fHz\n", cycles, timeEnd.Sub(timeStart), hertz)
+		siVal, siPrefix := humanize.ComputeSI(hertz)
+		fmt.Printf("%dcycles/%s = %4.2f%sHz\n", cycles, timeEnd.Sub(timeStart), siVal, siPrefix)
 	}()
 
 	for !win.Closed() {
