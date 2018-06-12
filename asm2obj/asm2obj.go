@@ -1,5 +1,7 @@
 package asm2obj
 
+//go:generate go-bindata -pkg $GOPACKAGE -o lc3os.go lc3os.asm
+
 import (
 	"fmt"
 	"regexp"
@@ -14,6 +16,12 @@ var (
 type Memory [65536]uint16
 
 func Assemble(assembly []string) (memory Memory) {
+	os, err := Asset("lc3os.asm")
+	if err != nil {
+		fmt.Println("OS code not compiled with program")
+	} else {
+		assemble(strings.Split(string(os), "\n"), &memory)
+	}
 	assemble(assembly, &memory)
 	return
 }

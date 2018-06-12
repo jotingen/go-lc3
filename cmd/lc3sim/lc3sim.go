@@ -2,8 +2,10 @@ package main
 
 import (
 	//"encoding/binary"
+	"bufio"
+	"flag"
 	"fmt"
-	//"os"
+	"os"
 	"time"
 )
 
@@ -29,67 +31,45 @@ const (
 )
 
 var (
+	in string
+
 	memory [65536]uint16
 )
 
 func main() {
-	assembly := []string{
-		".ORIG x0200",
-		"LD R0,DISPLAY",
-		"AND R1,R1,#0",
-		"AND R2,R2,#0",
-		"AND R3,R3,#0",
-		"AND R4,R4,#0",
-		"AND R5,R5,#0",
-		"AND R6,R6,#0",
-		"AND R7,R7,#0",
-		"STR R1,R0,#0",
-		"STR R2,R0,#1",
-		"STR R3,R0,#2",
-		"STR R4,R0,#3",
-		"STR R5,R0,#4",
-		"STR R6,R0,#5",
-		"STR R7,R0,#6",
-		"REPEAT",
-		"NOT R1,R1,#0",
-		"NOT R2,R2,#0",
-		"NOT R3,R3,#0",
-		"NOT R4,R4,#0",
-		"NOT R5,R5,#0",
-		"NOT R6,R6,#0",
-		"NOT R7,R7,#0",
-		"STR R1,R0,#0",
-		"STR R2,R0,#1",
-		"STR R3,R0,#2",
-		"STR R4,R0,#3",
-		"STR R5,R0,#4",
-		"STR R6,R0,#5",
-		"STR R7,R0,#6",
-		"BR REPEAT",
-		//"ADD R1,R1,#1",
-		//"ADD R1,R2,R3",
-		//"ADD R1,R2,R3",
-		//"BRnzp SKIP",
-		//"ADD R2,R0,R1",
-		//"SKIP ADD R3,R0,R1",
-		//"ADD R4,R0,R1",
-		//"ADD R7,R7,#-5",
-		//"LOOP ADD R7,R7,#1",
-		//"BRn LOOP",
-		//"LD R5,LOOP",
-		//"NOT R4,R4",
-		//"ADD R4,R4,#1",
-		"HALT",
-		"DISPLAY .FILL 0xC000",
-	}
-	memory = processAssembly(assembly)
+	//flag.BoolVar(&ascii, "ascii", false, "Print out program in ascii")
+	//flag.StringVar(&out, "o", "", "Print to custom file")
+	flag.StringVar(&in, "i", "", "Input assembly file")
+	flag.Parse()
+
+	memory = processAssembly(in)
 
 	pixelgl.Run(run)
 
 }
 
-func processAssembly(assembly []string) (memory [65536]uint16) {
+func processAssembly(file string) (memory [65536]uint16) {
+	assembly, err := readLines(file)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 	return asm2obj.Assemble(assembly)
+}
+
+func readLines(path string) ([]string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	return lines, scanner.Err()
 }
 
 func run() {
