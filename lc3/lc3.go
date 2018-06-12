@@ -146,14 +146,13 @@ func (lc3 *LC3) Step(inst uint16, data uint16) (uint16, Request, error) {
 
 			PCoffset11 := extract2C(inst, 10, 0)
 			fmt.Printf("  Executing JSR #%d\n", int16(PCoffset11))
-			lc3.Reg[7] = lc3.PC
-			lc3.PC++
-			lc3.PC += PCoffset11
+			lc3.Reg[7] = lc3.PC + 1
+			lc3.PC += PCoffset11 + 1
 
 		} else {
 			baseR := extract2C(inst, 8, 6)
 			fmt.Printf("  Executing JSRR R%d\n", baseR)
-			lc3.Reg[7] = lc3.PC
+			lc3.Reg[7] = lc3.PC + 1
 			lc3.PC = lc3.Reg[baseR]
 		}
 

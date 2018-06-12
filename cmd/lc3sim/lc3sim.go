@@ -92,31 +92,46 @@ func run() {
 
 	fmt.Printf("\n%s\n", lc3)
 
-	cycles := 0
-	timeStart := time.Now()
-	for { //Breakout when PC reads HALT address
+	go func() {
+		cycles := 0
+		timeStart := time.Now()
+		for { //Breakout when PC reads HALT address
+			//Step through CPU
+			pc, r, err = lc3.Step(memory[pc], data)
+			if err != nil {
+				panic(err)
+			}
+
+			//Process memory requests
+			if r.Vld {
+				if r.RnW {
+					if r.Address == 0x0025 {
+						break
+					}
+					data = memory[r.Address]
+				} else {
+					memory[r.Address] = r.Data
+				}
+			}
+
+			//Update cycle counter
+			cycles++
+		}
+		timeEnd := time.Now()
+
+		fmt.Printf("\n%s\n", lc3)
+
+		nanosecondsPerCycle := float64(timeEnd.Sub(timeStart)) / float64(cycles)
+		secondsPerCycle := float64(nanosecondsPerCycle) / 1000.0 / 1000.0 / 1000.0
+		hertz := 1 / secondsPerCycle
+		fmt.Printf("%dcycles/%s = %1.0fHz\n", cycles, timeEnd.Sub(timeStart), hertz)
+	}()
+
+	for !win.Closed() {
 		//Clean Display
 		imd.Reset()
 		imd.Clear()
 		win.Clear(colornames.White)
-
-		//Step through CPU
-		pc, r, err = lc3.Step(memory[pc], data)
-		if err != nil {
-			panic(err)
-		}
-
-		//Process memory requests
-		if r.Vld {
-			if r.RnW {
-				if r.Address == 0x0025 {
-					break
-				}
-				data = memory[r.Address]
-			} else {
-				memory[r.Address] = r.Data
-			}
-		}
 
 		//Update display
 		for y := 0; y < Y/SCALE; y++ {
@@ -145,19 +160,8 @@ func run() {
 		imd.Draw(win)
 		win.Update()
 
-		//Update cycle counter
-		cycles++
 	}
-	timeEnd := time.Now()
-
-	fmt.Printf("\n%s\n", lc3)
-
-	nanosecondsPerCycle := float64(timeEnd.Sub(timeStart)) / float64(cycles)
-	secondsPerCycle := float64(nanosecondsPerCycle) / 1000.0 / 1000.0 / 1000.0
-	hertz := 1 / secondsPerCycle
-	fmt.Printf("%dcycles/%s = %1.0fHz\n", cycles, timeEnd.Sub(timeStart), hertz)
-
-	//Just loop so i can see the display
-	for {
-	}
+	////Just loop so i can see the display
+	//for {
+	//}
 }

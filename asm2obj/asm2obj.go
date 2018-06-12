@@ -459,7 +459,7 @@ func assemble(assembly []string, memory *Memory) {
 
 			line = replaceLabelAsOffset(line, currentPC)
 
-			reJSR := regexp.MustCompile(`^\s*JMP\s+(\w)`)
+			reJSR := regexp.MustCompile(`^\s*JSR\s+#(-?\d+)`)
 			operands := reJSR.FindStringSubmatch(line)
 
 			pcOffset11, err := processOffset11(operands[1])
@@ -574,7 +574,7 @@ func assemble(assembly []string, memory *Memory) {
 
 			line = replaceLabelAsOffset(line, currentPC)
 
-			reLEA := regexp.MustCompile(`^\s*LEA\s+R(\d)\s*,\s*(\w+)`)
+			reLEA := regexp.MustCompile(`^\s*LEA\s+R(\d)\s*,\s*#(-?\d+)`)
 			operands := reLEA.FindStringSubmatch(line)
 
 			DR, err := processRegister(operands[1])

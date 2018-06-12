@@ -1,0 +1,46 @@
+.ORIG x3000
+
+//Initialize register values for test
+AND R0,R0,#0
+AND R1,R1,#0
+AND R2,R2,#0
+ADD R1,R1,#15
+ADD R2,R2,#10
+JSR XOR
+
+HALT
+
+;;;; XOR ;;;;
+; 
+; R0 = R1 ^ R2
+;
+
+XOR
+	;Save registers
+	STI R3, SAVE_R3
+	STI R4, SAVE_R4
+	STI R5, SAVE_R5
+
+	AND R3,R1,R2
+	NOT R3,R3
+	AND R4,R1,R3
+	NOT R4,R4
+	AND R5,R2,R3
+	NOT R5,R5
+	AND R0,R4,R5
+	NOT R0,R0
+
+	;Restore registers
+	LDI R3, SAVE_R3
+	LDI R4, SAVE_R4
+	LDI R5, SAVE_R5
+
+	RET     
+
+; Used to save and restore registers
+SAVE_R1 .FILL x3500
+SAVE_R2 .FILL x3501
+SAVE_R3 .FILL x3502
+SAVE_R4 .FILL x3503
+SAVE_R5 .FILL x3504
+SAVE_R7 .FILL x3505
