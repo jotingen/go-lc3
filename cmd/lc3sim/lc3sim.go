@@ -130,37 +130,40 @@ func run() {
 	}()
 
 	for !win.Closed() {
-		//Clean Display
-		imd.Reset()
-		imd.Clear()
-		win.Clear(colornames.White)
+		if (memory[0xFE14]&0x8000)>>15 == 1 {
+			//Clean Display
+			imd.Reset()
+			imd.Clear()
+			win.Clear(colornames.White)
 
-		//Update display
-		for y := 0; y < Y/SCALE; y++ {
-			for x := 0; x < X/SCALE; x++ {
-				addr := 0xC000 + y*0x0080 + x
-				imd.Color = pixel.RGB(
-					float64((memory[addr]&0x7C00)>>10)/32,
-					float64((memory[addr]&0x0380)>>5)/32,
-					float64((memory[addr]&0x001F)>>0)/32,
-				)
-				imd.Push(pixel.V(float64(x*SCALE), float64((Y/SCALE-y-1)*SCALE)))
-				imd.Push(pixel.V(float64(x*SCALE+SCALE), float64((Y/SCALE-y-1)*SCALE+SCALE)))
-				imd.Rectangle(0)
+			//Update display
+			for y := 0; y < Y/SCALE; y++ {
+				for x := 0; x < X/SCALE; x++ {
+					addr := 0xC000 + y*0x0080 + x
+					imd.Color = pixel.RGB(
+						float64((memory[addr]&0x7C00)>>10)/32,
+						float64((memory[addr]&0x0380)>>5)/32,
+						float64((memory[addr]&0x001F)>>0)/32,
+					)
+					imd.Push(pixel.V(float64(x*SCALE), float64((Y/SCALE-y-1)*SCALE)))
+					imd.Push(pixel.V(float64(x*SCALE+SCALE), float64((Y/SCALE-y-1)*SCALE+SCALE)))
+					imd.Rectangle(0)
 
-				//if x < 7 && y == 0 {
-				//	fmt.Printf("%d:%d 0x%04x %3.1f:%3.1f:%3.1f %3.1f:%3.1f %3.1f:%3.1f\n", x, y, addr,
-				//		float64((memory[addr]&0x7C00)>>10)/32,
-				//		float64((memory[addr]&0x0380)>>5)/32,
-				//		float64((memory[addr]&0x001F)>>0)/32,
-				//		float64(x*SCALE), float64((Y/SCALE-y-1)*SCALE),
-				//		float64(x*SCALE+SCALE), float64((Y/SCALE-y-1)*SCALE+SCALE),
-				//	)
-				//}
+					//if x < 7 && y == 0 {
+					//	fmt.Printf("%d:%d 0x%04x %3.1f:%3.1f:%3.1f %3.1f:%3.1f %3.1f:%3.1f\n", x, y, addr,
+					//		float64((memory[addr]&0x7C00)>>10)/32,
+					//		float64((memory[addr]&0x0380)>>5)/32,
+					//		float64((memory[addr]&0x001F)>>0)/32,
+					//		float64(x*SCALE), float64((Y/SCALE-y-1)*SCALE),
+					//		float64(x*SCALE+SCALE), float64((Y/SCALE-y-1)*SCALE+SCALE),
+					//	)
+					//}
+				}
 			}
+			imd.Draw(win)
+			win.Update()
+			memory[0xFE14] &= 0x7FFF
 		}
-		imd.Draw(win)
-		win.Update()
 
 	}
 	////Just loop so i can see the display

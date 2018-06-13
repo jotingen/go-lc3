@@ -539,6 +539,7 @@ OS_DDR	.FILL xFE06		; display data register
 OS_TR	.FILL xFE08		; timer register
 OS_TMI  .FILL xFE0A             ; timer interval register
 OS_MPR	.FILL xFE12		; memory protection register
+OS_VCR	.FILL xFE14		; video control register
 OS_MCR	.FILL xFFFE		; machine control register
 
 OS_SAVE_R0      .BLKW 1

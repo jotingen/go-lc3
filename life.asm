@@ -25,8 +25,16 @@ START
         NOT R3,R4    ;Subtract current address from max address
 	ADD R3,R3,#1
 	ADD R3,R3,R5
-	BRnz REPEAT     ;Break out of loop if current address >= max address
+	BRp START    ;Repeat until current address > max address
+	LDI R1,VCR
+	LD  R2,VCR_MASK
+	STR R2,R1,#0	
+	POLL_VCR
+		LDI R1,VCR
+		BRnp POLL_VCR
         JSR START
+VCR	.FILL xFE14		; video control register
+	VCR_MASK .FILL 0x8000
 	MASK .FILL 0x1010
 END
 	
