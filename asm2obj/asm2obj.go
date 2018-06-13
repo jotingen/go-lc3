@@ -4,6 +4,7 @@ package asm2obj
 
 import (
 	"fmt"
+	"math/rand"
 	"regexp"
 	"strconv"
 	"strings"
@@ -13,20 +14,21 @@ var (
 	table = make(map[string]uint16)
 )
 
-type Memory [65536]uint16
-
-func Assemble(assembly []string) (memory Memory) {
+func Assemble(assembly []string) (memory []uint16) {
 	os, err := Asset("lc3os.asm")
+	for i := 0; i < 65536; i++ {
+		memory = append(memory, uint16(rand.Uint32()))
+	}
 	if err != nil {
 		fmt.Println("OS code not compiled with program")
 	} else {
-		assemble(strings.Split(string(os), "\n"), &memory)
+		assemble(strings.Split(string(os), "\n"), memory)
 	}
-	assemble(assembly, &memory)
+	assemble(assembly, memory)
 	return
 }
 
-func assemble(assembly []string, memory *Memory) {
+func assemble(assembly []string, memory []uint16) {
 	reSpaces := regexp.MustCompile(`[\s\t]+`)
 	reHex := regexp.MustCompile(`^0?x([0-9A-Fa-f]+)$`)
 	reDec := regexp.MustCompile(`^#?(-?[0-9A-Fa-f]+)$`)

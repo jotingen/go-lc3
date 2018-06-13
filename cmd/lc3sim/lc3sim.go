@@ -34,7 +34,7 @@ const (
 var (
 	in string
 
-	memory [65536]uint16
+	memory []uint16
 )
 
 func main() {
@@ -49,7 +49,7 @@ func main() {
 
 }
 
-func processAssembly(file string) (memory [65536]uint16) {
+func processAssembly(file string) (memory []uint16) {
 	assembly, err := readLines(file)
 	if err != nil {
 		fmt.Println(err)
@@ -74,8 +74,6 @@ func readLines(path string) ([]string, error) {
 }
 
 func run() {
-	r := lc3.Request{}
-	data := uint16(0x0000)
 	pc := uint16(0x0200)
 
 	cfg := pixelgl.WindowConfig{
@@ -84,7 +82,7 @@ func run() {
 		VSync:  true,
 	}
 	lc3 := lc3.LC3{}
-	lc3.Init(pc)
+	lc3.Init(pc, memory)
 	win, err := pixelgl.NewWindow(cfg)
 	if err != nil {
 		panic(err)
@@ -98,21 +96,14 @@ func run() {
 		timeStart := time.Now()
 		for { //Breakout when PC reads HALT address
 			//Step through CPU
-			pc, r, err = lc3.Step(memory[pc], data)
+			pc, err = lc3.Step()
 			if err != nil {
 				panic(err)
 			}
 
 			//Process memory requests
-			if r.Vld {
-				if r.RnW {
-					if r.Address == 0x0025 {
-						break
-					}
-					data = memory[r.Address]
-				} else {
-					memory[r.Address] = r.Data
-				}
+			if pc == memory[0x0025] {
+				break
 			}
 
 			//Update cycle counter

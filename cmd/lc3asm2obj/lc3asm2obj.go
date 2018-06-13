@@ -18,7 +18,7 @@ var (
 	out   string
 	in    string
 
-	memory [65536]uint16
+	memory []uint16
 )
 
 func main() {
@@ -75,7 +75,7 @@ func main() {
 
 }
 
-func processAssembly(file string) (memory [65536]uint16) {
+func processAssembly(file string) (memory []uint16) {
 	assembly, err := readLines(file)
 	if err != nil {
 		fmt.Println(err)
@@ -99,7 +99,7 @@ func readLines(path string) ([]string, error) {
 	return lines, scanner.Err()
 }
 
-func dumpASCII(file string, memory [65536]uint16) {
+func dumpASCII(file string, memory []uint16) {
 	obj, err := os.Create(file)
 	if err != nil {
 		fmt.Println(err)
