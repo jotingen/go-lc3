@@ -79,7 +79,7 @@ func run() {
 	pc := uint16(0x0200)
 
 	cfg := pixelgl.WindowConfig{
-		Title:  "Life",
+		Title:  "L3C",
 		Bounds: pixel.R(0, 0, X, Y),
 		VSync:  true,
 	}
