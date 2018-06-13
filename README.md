@@ -53,7 +53,7 @@ xFE12 +- MPR   Memory Protection Register
                [2]  - x2000-x2FFF
                ...
                [15] - xF000-xFFFF
-xFE14 +- VCR   Video Control Register
+xFE14 +  VCR   Video Control Register
                Sync bit for the video display.  The user program can set bit [15] to 1 when it is done writing to 
                the video memory.  The display controller will buffer the memory, and then set this bit back to 0 when done capturing.
                The program can poll this bit and start updating the video memory once it clears.

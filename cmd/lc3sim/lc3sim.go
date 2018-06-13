@@ -153,7 +153,7 @@ func run() {
 			}
 			imd.Draw(win)
 			win.Update()
-			memory[0xFE14] &= 0x7FFF
+			memory[0xFE14] = 0x7FFF
 		}
 
 	}

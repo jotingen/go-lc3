@@ -1,48 +1,72 @@
 .ORIG x3000
 
 ;Initialize register values for test
-LD R4,DISPLAY ;Address stored in R4
+LD R4,BUFFER  ;Buffer address stored in R4
 LD R5,PIXELS  ;Total number of pixels stored in R5
-ADD R5,R4,R5  ;End address stored in R5
+ADD R5,R4,R5  ;End buffer address stored in R5
 
 AND R0,R0,#0
 ADD R0,R0,#9 ;LFSR
 
 REPEAT
-LD R4,DISPLAY ;Address stored in R4
-START
-	;Determine whether or not to create cell based on mask of LFSR
-	LD R1,MASK
-	AND R1,R1,R0
-	BRz MASK_WAS_0
-	AND R1,R1,#0
-	NOT R1,R1
-	MASK_WAS_0
+	LD R4,BUFFER ;Buffer address stored in R4
+	START
+		;Determine whether or not to create cell based on mask of LFSR
+		LD R1,MASK
+		AND R1,R1,R0
+		BRz MASK_WAS_0
+		AND R1,R1,#0
+		NOT R1,R1
+		MASK_WAS_0
 
-	STR R1,R4,#0 ;Send pixel       
-	JSR LFSR     ;Update LFSR for next pixel
-	ADD R4,R4,#1 ;Increment display address
-        NOT R3,R4    ;Subtract current address from max address
-	ADD R3,R3,#1
-	ADD R3,R3,R5
-	BRp START    ;Repeat until current address > max address
-	LDI R1,VCR
-	LD  R2,VCR_MASK
-	STR R2,R1,#0	
-	POLL_VCR
-		LDI R1,VCR
-		BRnp POLL_VCR
-        JSR START
+		;Send pixel       
+		STR R1,R4,#0 
+
+		;Update LFSR for next pixel
+		JSR LFSR     
+
+		;Increment display address
+		ADD R4,R4,#1 
+
+		;Determine if we are at the last pixel
+		NOT R2,R4    ;Subtract current address from max address
+		ADD R2,R2,#1
+		ADD R2,R2,R5
+		BRp START    ;Repeat until current address > max address
+
+                ;Load buffer display into display space
+		LD R3,DISPLAY ;Display address stored in R4
+		LD R4,BUFFER  ;Buffer address stored in R4
+       BUFF   	LDR R2,R4,#0  
+		STR R2,R3,#0  
+		ADD R3,R3,#1
+		ADD R4,R4,#1
+		
+		;Determine if we are at the last pixel
+		NOT R2,R4    ;Subtract current address from max address
+		ADD R2,R2,#1
+		ADD R2,R2,R5
+		BRp BUFF    ;Repeat until current address > max address
+
+		LD  R1,VCR
+		LD  R2,VCR_MASK
+		STR R2,R1,#0	
+		POLL_VCR
+			LDI R1,VCR
+			LD  R2,VCR_MASK
+			NOT R2,R2
+			AND R2,R2,R1
+			BRnp POLL_VCR
+		JSR REPEAT
 VCR	.FILL xFE14		; video control register
 	VCR_MASK .FILL 0x8000
 	MASK .FILL 0x1010
 END
-	
-;JSR XOR
 
 HALT
 
-DISPLAY .FILL 0xC000 ;starting address
+BUFFER  .FILL 0x8200 ;buffered display address
+DISPLAY .FILL 0xC000 ;display address
 PIXELS  .FILL 0x3E00 ;15872 pixels
 
 ;;;; LSFR ;;;;
