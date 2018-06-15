@@ -10,6 +10,10 @@ import (
 	"strings"
 )
 
+import (
+	"github.com/golang/glog"
+)
+
 var (
 	table = make(map[string]uint16)
 )
@@ -164,22 +168,32 @@ func assemble(assembly []string, memory []uint16) {
 		}
 	}
 
-	fmt.Println("Cleaned Code:")
+	if glog.V(1) {
+		glog.Info("Cleaned Code:")
+	}
 	for _, line := range assembly {
-		fmt.Println(line)
+		if glog.V(1) {
+			glog.Info(line)
+		}
 	}
 	fmt.Println()
 
-	fmt.Println("Table:")
+	if glog.V(1) {
+		glog.Info("Table:")
+	}
 	for key, value := range table {
-		fmt.Printf("%20s:x%04x\n", key, value)
+		if glog.V(1) {
+			glog.Infof("%20s:x%04x\n", key, value)
+		}
 	}
 	fmt.Println()
 
 	currentPC := origin
 	offset = 0
 	for i, line := range assembly {
-		fmt.Printf("Processing %d: %s\n", i, line)
+		if glog.V(1) {
+			glog.Infof("Processing %d: %s\n", i, line)
+		}
 		instruction := uint16(0)
 		items := strings.Split(line, " ")
 		op := items[0]
@@ -211,7 +225,9 @@ func assemble(assembly []string, memory []uint16) {
 				}
 			}
 			instruction |= fill
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -229,7 +245,9 @@ func assemble(assembly []string, memory []uint16) {
 						fmt.Println("Error processing .BLKW ", line)
 					}
 				}
-				fmt.Printf("%04x:%04x ; %s\n", currentPC, val, line)
+				if glog.V(1) {
+					glog.Infof("%04x:%04x ; %s\n", currentPC, val, line)
+				}
 				memory[currentPC] = uint16(val)
 				currentPC++
 				offset++
@@ -241,7 +259,9 @@ func assemble(assembly []string, memory []uint16) {
 				fmt.Println(err)
 			}
 			for _, char := range s {
-				fmt.Printf("%04x:%04x ; %s\n", currentPC, uint16(char), ".STRINGZ "+strconv.Quote(string(char)))
+				if glog.V(1) {
+					glog.Infof("%04x:%04x ; %s\n", currentPC, uint16(char), ".STRINGZ "+strconv.Quote(string(char)))
+				}
 				memory[currentPC] = uint16(char)
 				currentPC++
 				offset++
@@ -249,42 +269,54 @@ func assemble(assembly []string, memory []uint16) {
 		case ".END":
 		case "GETC":
 			instruction |= 0xF020
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
 
 		case "OUT":
 			instruction |= 0xF021
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
 
 		case "PUTS":
 			instruction |= 0xF022
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
 
 		case "IN":
 			instruction |= 0xF023
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
 
 		case "PUTSP":
 			instruction |= 0xF024
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
 
 		case "HALT":
 			instruction |= 0xF025
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -338,7 +370,9 @@ func assemble(assembly []string, memory []uint16) {
 				fmt.Printf("Error processing line %d: %s", i, line)
 			}
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -392,7 +426,9 @@ func assemble(assembly []string, memory []uint16) {
 				fmt.Printf("Error processing line %d: %s", i, line)
 			}
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -425,7 +461,9 @@ func assemble(assembly []string, memory []uint16) {
 
 			instruction |= pcOffset9
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -443,7 +481,9 @@ func assemble(assembly []string, memory []uint16) {
 
 			instruction |= baseR << 6
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -451,7 +491,9 @@ func assemble(assembly []string, memory []uint16) {
 		case "RET":
 			instruction |= 0xC1C0
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -470,7 +512,9 @@ func assemble(assembly []string, memory []uint16) {
 			}
 			instruction |= pcOffset11
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -487,7 +531,9 @@ func assemble(assembly []string, memory []uint16) {
 			}
 			instruction |= baseR << 6
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -512,7 +558,9 @@ func assemble(assembly []string, memory []uint16) {
 			}
 			instruction |= pcOffset9
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -537,7 +585,9 @@ func assemble(assembly []string, memory []uint16) {
 			}
 			instruction |= pcOffset9
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -566,7 +616,9 @@ func assemble(assembly []string, memory []uint16) {
 			}
 			instruction |= offset6
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -591,7 +643,9 @@ func assemble(assembly []string, memory []uint16) {
 			}
 			instruction |= pcOffset9
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -616,7 +670,9 @@ func assemble(assembly []string, memory []uint16) {
 
 			instruction |= 0x003F
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -644,7 +700,9 @@ func assemble(assembly []string, memory []uint16) {
 			}
 			instruction |= pcOffset9
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -669,7 +727,9 @@ func assemble(assembly []string, memory []uint16) {
 			}
 			instruction |= pcOffset9
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -698,7 +758,9 @@ func assemble(assembly []string, memory []uint16) {
 			}
 			instruction |= offset6
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++
@@ -715,7 +777,9 @@ func assemble(assembly []string, memory []uint16) {
 			}
 			instruction |= uint16(trapVect8Int) & 0x00FF
 
-			fmt.Printf("%04x:%04x ; %s\n", currentPC, instruction, line)
+			if glog.V(1) {
+				glog.Infof("%04x:%04x ; %s\n", currentPC, instruction, line)
+			}
 			memory[currentPC] = instruction
 			currentPC++
 			offset++

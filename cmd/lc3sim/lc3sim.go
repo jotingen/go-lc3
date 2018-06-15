@@ -1,7 +1,6 @@
 package main
 
 import (
-	//"encoding/binary"
 	"bufio"
 	"flag"
 	"fmt"
@@ -14,6 +13,7 @@ import (
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
+	"github.com/golang/glog"
 	"golang.org/x/image/colornames"
 )
 
@@ -38,15 +38,15 @@ var (
 )
 
 func main() {
-	//flag.BoolVar(&ascii, "ascii", false, "Print out program in ascii")
-	//flag.StringVar(&out, "o", "", "Print to custom file")
 	flag.StringVar(&in, "i", "", "Input assembly file")
+	flag.Lookup("log_dir").Value.Set(".")
 	flag.Parse()
 
 	memory = processAssembly(in)
 
 	pixelgl.Run(run)
 
+	glog.Flush()
 }
 
 func processAssembly(file string) (memory []uint16) {
@@ -108,8 +108,13 @@ func run() {
 
 			//Update cycle counter
 			cycles++
+
+			if cycles%10000000 == 0 {
+				glog.Flush()
+			}
 		}
 		timeEnd := time.Now()
+		glog.Flush()
 
 		fmt.Printf("\n%s\n", lc3)
 
@@ -122,6 +127,10 @@ func run() {
 
 	for !win.Closed() {
 		if (memory[0xFE14]&0x8000)>>15 == 1 {
+			if glog.V(2) {
+				glog.Info("Updating display")
+			}
+
 			//Clean Display
 			imd.Reset()
 			imd.Clear()

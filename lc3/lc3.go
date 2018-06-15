@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+import (
+	"github.com/golang/glog"
+)
+
 type Memory [65536]uint16
 
 type LC3 struct {
@@ -86,11 +90,15 @@ func (lc3 *LC3) Step() (uint16, error) {
 		bit5 := extract1C(inst, 5, 5)
 		if bit5 == 1 {
 			imm5 := extract2C(inst, 4, 0)
-			//fmt.Printf("  Executing ADD R%d,R%d,#%d\n", dr, sr1, int16(imm5))
+			if glog.V(2) {
+				glog.Infof("0x%04x: ADD R%d,R%d,#%d\n", lc3.PC, dr, sr1, int16(imm5))
+			}
 			lc3.Reg[dr] = lc3.Reg[sr1] + imm5
 		} else {
 			sr2 := extract1C(inst, 2, 0)
-			//fmt.Printf("  Executing ADD R%d,R%d,R%d\n", dr, sr1, sr2)
+			if glog.V(2) {
+				glog.Infof("0x%04x: ADD R%d,R%d,R%d\n", lc3.PC, dr, sr1, sr2)
+			}
 			lc3.Reg[dr] = lc3.Reg[sr1] + lc3.Reg[sr2]
 		}
 		lc3.PC++
@@ -102,11 +110,15 @@ func (lc3 *LC3) Step() (uint16, error) {
 		bit5 := extract1C(inst, 5, 5)
 		if bit5 == 1 {
 			imm5 := extract2C(inst, 4, 0)
-			//fmt.Printf("  Executing AND R%d,R%d,#%d\n", dr, sr1, int16(imm5))
+			if glog.V(2) {
+				glog.Infof("0x%04x: AND R%d,R%d,#%d\n", lc3.PC, dr, sr1, int16(imm5))
+			}
 			lc3.Reg[dr] = lc3.Reg[sr1] & imm5
 		} else {
 			sr2 := extract1C(inst, 2, 0)
-			//fmt.Printf("  Executing AND R%d,R%d,R%d\n", dr, sr1, sr2)
+			if glog.V(2) {
+				glog.Infof("0x%04x: AND R%d,R%d,R%d\n", lc3.PC, dr, sr1, sr2)
+			}
 			lc3.Reg[dr] = lc3.Reg[sr1] & lc3.Reg[sr2]
 		}
 		lc3.PC++
@@ -117,17 +129,27 @@ func (lc3 *LC3) Step() (uint16, error) {
 		z := extract1C(inst, 10, 10) == 1
 		p := extract1C(inst, 9, 9) == 1
 		PCoffset9 := extract2C(inst, 8, 0)
-		//fmt.Print("  Executing BR")
+		if glog.V(2) {
+			glog.Infof("0x%04x: BR", lc3.PC)
+		}
 		if n {
-			//fmt.Print("n")
+			if glog.V(2) {
+				glog.Infof("n")
+			}
 		}
 		if z {
-			//fmt.Print("z")
+			if glog.V(2) {
+				glog.Infof("z")
+			}
 		}
 		if p {
-			//fmt.Print("p")
+			if glog.V(2) {
+				glog.Infof("p")
+			}
 		}
-		//fmt.Printf(" #%d\n", int16(PCoffset9))
+		if glog.V(2) {
+			glog.Infof(" #%d\n", int16(PCoffset9))
+		}
 		if (n && lc3.PSR.N) || (z && lc3.PSR.Z) || (p && lc3.PSR.P) {
 			lc3.PC += PCoffset9
 		}
@@ -135,7 +157,9 @@ func (lc3 *LC3) Step() (uint16, error) {
 
 	case 0xC: //JMP/RET
 		baseR := extract1C(inst, 8, 6)
-		//fmt.Printf("  Executing JMP R%d\n", baseR)
+		if glog.V(2) {
+			glog.Infof("0x%04x: JMP R%d\n", lc3.PC, baseR)
+		}
 		lc3.PC = lc3.Reg[baseR]
 
 	case 0x4: //JSR/JSRR
@@ -143,13 +167,17 @@ func (lc3 *LC3) Step() (uint16, error) {
 		if bit11 == 1 {
 
 			PCoffset11 := extract2C(inst, 10, 0)
-			//fmt.Printf("  Executing JSR #%d\n", int16(PCoffset11))
+			if glog.V(2) {
+				glog.Infof("0x%04x: JSR #%d\n", lc3.PC, int16(PCoffset11))
+			}
 			lc3.Reg[7] = lc3.PC + 1
 			lc3.PC += PCoffset11 + 1
 
 		} else {
 			baseR := extract2C(inst, 8, 6)
-			//fmt.Printf("  Executing JSRR R%d\n", baseR)
+			if glog.V(2) {
+				glog.Infof("0x%04x: JSRR R%d\n", lc3.PC, baseR)
+			}
 			lc3.Reg[7] = lc3.PC + 1
 			lc3.PC = lc3.Reg[baseR]
 		}
@@ -157,7 +185,9 @@ func (lc3 *LC3) Step() (uint16, error) {
 	case 0x2: //LD
 		dr := extract1C(inst, 11, 9)
 		PCoffset9 := extract2C(inst, 8, 0)
-		//fmt.Printf("  Executing LD R%d #%d\n", dr, int16(PCoffset9))
+		if glog.V(2) {
+			glog.Infof("0x%04x: LD R%d #%d\n", lc3.PC, dr, int16(PCoffset9))
+		}
 		lc3.PC++
 		lc3.Reg[dr] = lc3.Memory[lc3.PC+PCoffset9]
 		lc3.setCC(lc3.Reg[dr])
@@ -165,7 +195,9 @@ func (lc3 *LC3) Step() (uint16, error) {
 	case 0xA: //LDI
 		dr := extract1C(inst, 11, 9)
 		PCoffset9 := extract2C(inst, 8, 0)
-		//fmt.Printf("  Executing LDI R%d #%d\n", dr, int16(PCoffset9))
+		if glog.V(2) {
+			glog.Infof("0x%04x: LDI R%d #%d\n", lc3.PC, dr, int16(PCoffset9))
+		}
 		lc3.PC++
 		lc3.Reg[dr] = lc3.Memory[lc3.Memory[lc3.PC+PCoffset9]]
 		lc3.setCC(lc3.Reg[dr])
@@ -174,7 +206,9 @@ func (lc3 *LC3) Step() (uint16, error) {
 		dr := extract1C(inst, 11, 9)
 		baseR := extract1C(inst, 8, 6)
 		offset6 := extract2C(inst, 5, 0)
-		//fmt.Printf("  Executing LDR R%d R%d #%d\n", dr, baseR, int16(offset6))
+		if glog.V(2) {
+			glog.Infof("0x%04x: LDR R%d R%d #%d\n", lc3.PC, dr, baseR, int16(offset6))
+		}
 		lc3.PC++
 		lc3.Reg[dr] = lc3.Memory[lc3.Reg[baseR]+offset6]
 		lc3.setCC(lc3.Reg[dr])
@@ -182,7 +216,9 @@ func (lc3 *LC3) Step() (uint16, error) {
 	case 0xE: //LEA
 		dr := extract1C(inst, 11, 9)
 		PCoffset9 := extract2C(inst, 8, 0)
-		//fmt.Printf("  Executing LEA R%d #%d\n", dr, int16(PCoffset9))
+		if glog.V(2) {
+			glog.Infof("0x%04x: LEA R%d #%d\n", lc3.PC, dr, int16(PCoffset9))
+		}
 		lc3.PC++
 		lc3.Reg[dr] = lc3.PC + PCoffset9
 		lc3.setCC(lc3.Reg[dr])
@@ -190,7 +226,9 @@ func (lc3 *LC3) Step() (uint16, error) {
 	case 0x9: //NOT
 		dr := extract1C(inst, 11, 9)
 		sr := extract1C(inst, 8, 6)
-		//fmt.Printf("  Executing NOT R%d R%d\n", dr, sr)
+		if glog.V(2) {
+			glog.Infof("0x%04x: NOT R%d R%d\n", lc3.PC, dr, sr)
+		}
 		lc3.PC++
 		lc3.Reg[dr] = ^lc3.Reg[sr]
 		lc3.setCC(lc3.Reg[dr])
@@ -199,7 +237,9 @@ func (lc3 *LC3) Step() (uint16, error) {
 
 		if !lc3.PSR.Privilege {
 
-			//fmt.Printf("  Executing RTI\n")
+			if glog.V(2) {
+				glog.Infof("0x%04x: RTI\n", lc3.PC)
+			}
 			lc3.PC = lc3.Memory[lc3.Reg[6]]
 			lc3.Reg[6]++
 			lc3.PSR.Privilege = extract1C(lc3.Memory[lc3.Reg[6]], 15, 15) == 1
@@ -217,14 +257,18 @@ func (lc3 *LC3) Step() (uint16, error) {
 	case 0x3: //ST
 		sr := extract1C(inst, 11, 9)
 		PCoffset9 := extract2C(inst, 8, 0)
-		//fmt.Printf("  Executing ST R%d #%d\n", sr, int16(PCoffset9))
+		if glog.V(2) {
+			glog.Infof("0x%04x: ST R%d #%d\n", lc3.PC, sr, int16(PCoffset9))
+		}
 		lc3.PC++
 		lc3.Memory[lc3.PC+PCoffset9] = lc3.Reg[sr]
 
 	case 0xB: //STI
 		sr := extract1C(inst, 11, 9)
 		PCoffset9 := extract2C(inst, 8, 0)
-		//fmt.Printf("  Executing STI R%d #%d\n", sr, int16(PCoffset9))
+		if glog.V(2) {
+			glog.Infof("0x%04x: STI R%d #%d\n", lc3.PC, sr, int16(PCoffset9))
+		}
 		lc3.PC++
 		lc3.Memory[lc3.Memory[lc3.PC+PCoffset9]] = lc3.Reg[sr]
 
@@ -232,13 +276,17 @@ func (lc3 *LC3) Step() (uint16, error) {
 		sr := extract1C(inst, 11, 9)
 		baseR := extract1C(inst, 8, 6)
 		offset6 := extract2C(inst, 5, 0)
-		//fmt.Printf("  Executing ST R%d R%d #%d\n", sr, baseR, int16(offset6))
+		if glog.V(2) {
+			glog.Infof("0x%04x: ST R%d R%d #%d\n", lc3.PC, sr, baseR, int16(offset6))
+		}
 		lc3.PC++
 		lc3.Memory[lc3.Reg[baseR]+offset6] = lc3.Reg[sr]
 
 	case 0xF: //TRAP
 		trapvect8 := extract1C(inst, 7, 0)
-		//fmt.Printf("  Executing TRAP #%d\n", int16(trapvect8))
+		if glog.V(2) {
+			glog.Infof("0x%04x: TRAP #%d\n", lc3.PC, int16(trapvect8))
+		}
 		lc3.Reg[7] = lc3.PC + 1
 		lc3.PC = lc3.Memory[trapvect8]
 
