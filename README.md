@@ -37,13 +37,13 @@ xFE00  - KBSR  Keyboard Status Register: when KBSR[15] is 1, the keyboard has re
 xFE02  - KBDR  Keyboard Data Register: when a new character is available, KBSR[7:0] contains the ASCII value of the typed character.
 xFE04  - DSR   Display Status Register: when DSR[15] is 1, the display is ready to receive a new character to display.
 xFE06  - DDR   Display Data Register: when the display is ready, the display will print the ASCII character contained in DDR[7:0].
-xFE08 +- TMR   Timer Register: TMR[15] is 1 if the timer has gone off, and 0 otherwise.
-xFE0A +- TMI   Timer Interval Register: the number of milliseconds between timer ticks. 
+xFE08 +  TMR   Timer Register: TMR[15] is 1 if the timer has gone off, and 0 otherwise.
+xFE0A +  TMI   Timer Interval Register: the number of milliseconds between timer ticks. 
                Setting this to 0 disables the timer, and setting it to 1 or more sets the timer.
                The emulator will use the host's clock to control updates to TMR
-xFE0C +- CLK1  Precision unit of Unix Epoch time, 1/(2^15) = ~30.5 microseconds
-xFE0E +- CLK2  Unix Epoch Time, bits [15:0]
-xFE10 +- CLK3  Unix Epoch Time, bits [31:16]
+xFE0C +  CLK1  Precision unit of Unix Epoch time, 1/(2^15) = ~30.5 microseconds
+xFE0E +  CLK2  Unix Epoch Time, bits [15:0]
+xFE10 +  CLK3  Unix Epoch Time, bits [31:16]
                Provides a real world time value, based off of the unix epoch
 xFE12 +- MPR   Memory Protection Register
                Defines if memory range can be accessed in user mode
@@ -63,5 +63,5 @@ xFFFE  - MCR   Machine Control Register
                [15] - Clock Enable
                [14] - Timer Interrupt Enable
                [13:0] - cycle interval between timer interrupts
-xFFFF +- MCC   Machine Cycle Counter
+xFFFF +  MCC   Machine Cycle Counter
                Value is incremented at every clock cycle

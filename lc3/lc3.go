@@ -3,6 +3,7 @@ package lc3
 import (
 	"fmt"
 	"math/rand"
+	"time"
 )
 
 type Memory [65536]uint16
@@ -15,6 +16,9 @@ type LC3 struct {
 	PSR PSR
 
 	Memory []uint16
+
+	TimerStarted bool
+	TimerStart   time.Time
 }
 
 type PSR struct {
@@ -242,6 +246,43 @@ func (lc3 *LC3) Step() (uint16, error) {
 		return lc3.PC, fmt.Errorf("Op not recognized: x%x", op)
 
 	}
+
+	//Timer Registers
+	if lc3.Memory[0xFE0A] != 0 {
+		if (lc3.Memory[0xFE08]&0x8000)>>15 == 0 {
+			if lc3.TimerStarted {
+				elapsedMilliseconds := time.Now().Sub(lc3.TimerStart)
+
+				if elapsedMilliseconds >= (time.Duration(lc3.Memory[0xFE0A]) * time.Millisecond) {
+
+					lc3.Memory[0xFE08] = 0x8000
+				} else {
+					lc3.Memory[0xFE08] = 0x0000
+				}
+			} else {
+				lc3.TimerStart = time.Now()
+				lc3.TimerStarted = true
+				lc3.Memory[0xFE08] = 0x0000
+			}
+
+		} else {
+			lc3.Memory[0xFE08] = 0x0000
+		}
+	} else {
+		lc3.Memory[0xFE08] = 0x0000
+	}
+
+	//Update clock register
+	time := time.Now()
+	//CLK1
+	lc3.Memory[0xFE0C] = uint16(uint64(time.Nanosecond()) / 1e9 * 32768)
+	//CLK2
+	lc3.Memory[0xFE0C] = uint16(uint64(time.Unix()) & 0xFFFF)
+	//CLK3
+	lc3.Memory[0xFE0C] = uint16((uint64(time.Unix()) & 0xFFFF0000) >> 16)
+
+	//Increment MCC
+	lc3.Memory[0xFFFF]++
 
 	return lc3.PC, nil
 }
