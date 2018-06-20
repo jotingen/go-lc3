@@ -37,10 +37,10 @@ func (psr PSR) String() (s string) {
 	raw := uint16(0)
 
 	if psr.Privilege {
+		s += "Super "
+	} else {
 		raw |= 0x8000
 		s += "User  "
-	} else {
-		s += "Super "
 	}
 
 	raw &= (uint16(psr.Priority) & 0x0007) << 8
@@ -64,13 +64,14 @@ func (psr PSR) String() (s string) {
 	} else {
 		s += "n"
 	}
-	return fmt.Sprintf("PSR: %016b x%04x (%s)", raw, raw, s)
+	return fmt.Sprintf("PSR:%04x (%s)", raw, s)
 }
 
 func (lc3 *LC3) Init(pc uint16, m []uint16) {
 	for i := range lc3.Reg {
 		lc3.Reg[i] = uint16(rand.Intn(65536))
 	}
+	lc3.PSR.Privilege = true
 	lc3.PC = pc
 	lc3.Memory = m
 	//fmt.Printf("Set PC: %04x\n", lc3.PC)
@@ -236,7 +237,7 @@ func (lc3 *LC3) Step() (uint16, error) {
 			}
 			lc3.PC = lc3.Memory[lc3.Reg[6]]
 			lc3.Reg[6]++
-			lc3.PSR.Privilege = extract1C(lc3.Memory[lc3.Reg[6]], 15, 15) == 1
+			lc3.PSR.Privilege = extract1C(lc3.Memory[lc3.Reg[6]], 15, 15) == 0
 			lc3.PSR.Priority = uint8(extract1C(lc3.Memory[lc3.Reg[6]], 10, 8))
 			lc3.PSR.N = extract1C(lc3.Memory[lc3.Reg[6]], 2, 2) == 1
 			lc3.PSR.Z = extract1C(lc3.Memory[lc3.Reg[6]], 1, 1) == 1
@@ -282,6 +283,7 @@ func (lc3 *LC3) Step() (uint16, error) {
 			glog.Infof("0x%04x: TRAP #%d\n", lc3.PC, int16(trapvect8))
 		}
 		lc3.Reg[7] = lc3.PC + 1
+		lc3.PSR.Privilege = true
 		lc3.PC = lc3.Memory[trapvect8]
 
 	default:
