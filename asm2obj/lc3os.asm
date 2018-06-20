@@ -528,6 +528,19 @@ OS_START
 	LD R0, TIM_INIT
 	STI R0, OS_TMI
 
+	;; clear registers
+	AND R0,R0,#0
+	LD  R1,MASK_HI		; get mask
+	NOT R1,R1               ; invert mask to get x8000
+	STI R0, OS_KBSR
+	STI R0, OS_KBDR
+	STI R1, OS_DSR
+	STI R0, OS_DDR
+	STI R0, OS_TR
+	STI R0, OS_VCR
+	STI R0, OS_MCR
+	STI R0, OS_MCC
+
 	;; start running user code (clear Privilege bit w/ JMP)
 	LD R7, USER_CODE_ADDR
 	JMP	R7
@@ -541,6 +554,7 @@ OS_TMI  .FILL xFE0A             ; timer interval register
 OS_MPR	.FILL xFE12		; memory protection register
 OS_VCR	.FILL xFE14		; video control register
 OS_MCR	.FILL xFFFE		; machine control register
+OS_MCC	.FILL xFFFF		; machine cycle counter
 
 OS_SAVE_R0      .BLKW 1
 OS_SAVE_R1      .BLKW 1
@@ -550,8 +564,6 @@ OS_SAVE_R4      .BLKW 1
 OS_SAVE_R5      .BLKW 1
 OS_SAVE_R6      .BLKW 1
 OS_SAVE_R7      .BLKW 1
-OS_OUT_SAVE_R1  .BLKW 1
-OS_IN_SAVE_R7   .BLKW 1
                 	
 MASK_HI         .FILL x7FFF
 LOW_8_BITS      .FILL x00FF
@@ -562,21 +574,44 @@ USER_CODE_ADDR	.FILL x3000	; user code starts at x3000
 
         
 ;;; GETC - Read a single character of input from keyboard device into R0
+;;; Clear KBSR[15] when captured
 TRAP_GETC
-	LDI R0,OS_KBSR		; wait for a keystroke
-	BRzp TRAP_GETC
-	LDI R0,OS_KBDR		; read it and return
+	ST R1,OS_SAVE_R1	; save R1
+	ST R2,OS_SAVE_R2	; save R2
+
+TRAP_GETC_WAIT
+	LDI R1,OS_KBSR		; wait for a keystroke
+	BRzp TRAP_GETC_WAIT
+
+	LDI R0,OS_KBDR		; read it
+
+	LD  R2,MASK_HI		; get mask
+	AND R1,R1,R2            ; mask out KBSR[15]
+	STI R1,OS_KBSR		; write the new KBSR
+
+	LD R2,OS_SAVE_R2	; restore R2
+	LD R1,OS_SAVE_R1	; restore R1
 	RET
 
         
 ;;; OUT - Write the character in R0 to the console.
+;;; Clear DSR[15] when character ready
 TRAP_OUT
-	ST R1,OS_OUT_SAVE_R1	; save R1
+	ST R1,OS_SAVE_R1	; save R1
+	ST R2,OS_SAVE_R2	; save R2
+
 TRAP_OUT_WAIT
 	LDI R1,OS_DSR		; wait for the display to be ready
 	BRzp TRAP_OUT_WAIT
-	STI R0,OS_DDR		; write the character and return
-	LD R1,OS_OUT_SAVE_R1	; restore R1
+
+	STI R0,OS_DDR		; write the character
+
+	LD  R2,MASK_HI		; get mask
+	AND R1,R1,R2            ; mask out DSR[15]
+	STI R1,OS_DSR		; write the new DSR
+
+	LD R2,OS_SAVE_R2	; restore R2
+	LD R1,OS_SAVE_R1	; restore R1
 	RET
 
                 
@@ -604,7 +639,7 @@ TRAP_PUTS_DONE
 ;;; IN - prompt the user for a single character input, which is stored
 ;;; in R0 and also echoed to the console.        
 TRAP_IN
-	ST R7,OS_IN_SAVE_R7	; save R7 (no need to save R0, since we 
+	ST R7,OS_SAVE_R7	; save R7 (no need to save R0, since we 
 				;    overwrite later
 	LEA R0,TRAP_IN_MSG	; prompt for input
 	PUTS
@@ -615,7 +650,7 @@ TRAP_IN
 	ADD R0,R0,#10
 	OUT
 	LD R0,OS_SAVE_R0	; restore the character
-	LD R7,OS_IN_SAVE_R7	; restore R7
+	LD R7,OS_SAVE_R7	; restore R7
 	RET                     ; this doesn't work, because
 
 

@@ -129,26 +129,20 @@ func (lc3 *LC3) Step() (uint16, error) {
 		z := extract1C(inst, 10, 10) == 1
 		p := extract1C(inst, 9, 9) == 1
 		PCoffset9 := extract2C(inst, 8, 0)
-		if glog.V(2) {
-			glog.Infof("0x%04x: BR", lc3.PC)
-		}
+
+		brString := fmt.Sprintf("0x%04x: BR", lc3.PC)
 		if n {
-			if glog.V(2) {
-				glog.Infof("n")
-			}
+			brString += fmt.Sprintf("n")
 		}
 		if z {
-			if glog.V(2) {
-				glog.Infof("z")
-			}
+			brString += fmt.Sprintf("z")
 		}
 		if p {
-			if glog.V(2) {
-				glog.Infof("p")
-			}
+			brString += fmt.Sprintf("p")
 		}
+		brString += fmt.Sprintf(" #%d\n", int16(PCoffset9))
 		if glog.V(2) {
-			glog.Infof(" #%d\n", int16(PCoffset9))
+			glog.Info(brString)
 		}
 		if (n && lc3.PSR.N) || (z && lc3.PSR.Z) || (p && lc3.PSR.P) {
 			lc3.PC += PCoffset9
@@ -337,14 +331,20 @@ func (lc3 *LC3) Step() (uint16, error) {
 
 func (lc3 LC3) String() (s string) {
 	for i, r := range lc3.Reg {
-		s += fmt.Sprintf("R%d:  %016b x%04x %d\n", i, r, r, int16(r))
+		s += fmt.Sprintf("R%d:%04x ", i, r)
 	}
 	s += "\n"
 
-	s += fmt.Sprintf("PC:  %016b x%04x %d\n", lc3.PC, lc3.PC, lc3.PC)
-	s += "\n"
+	s += fmt.Sprintf("PC:%04x %s\n", lc3.PC, lc3.PSR)
 
-	s += fmt.Sprintf("%s\n", lc3.PSR)
+	s += fmt.Sprintf("KBSR:%04x KBDR:%04x\n", lc3.Memory[0xFE00], lc3.Memory[0xFE02])
+	s += fmt.Sprintf(" DSR:%04x  DDR:%04x\n", lc3.Memory[0xFE04], lc3.Memory[0xFE06])
+	s += fmt.Sprintf(" TMR:%04x  TMI:%04x\n", lc3.Memory[0xFE08], lc3.Memory[0xFE0A])
+	s += fmt.Sprintf("CLK1:%04x CLK2:%04x CLK3:%04x\n", lc3.Memory[0xFE0C], lc3.Memory[0xFE0E], lc3.Memory[0xFE10])
+	s += fmt.Sprintf(" MPR:%04x\n", lc3.Memory[0xFE12])
+	s += fmt.Sprintf(" VCR:%04x\n", lc3.Memory[0xFE14])
+	s += fmt.Sprintf(" MCR:%04x\n", lc3.Memory[0xFFFE])
+	s += fmt.Sprintf(" MCC:%04x\n", lc3.Memory[0xFFFF])
 
 	return s
 }

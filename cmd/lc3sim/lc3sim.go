@@ -14,6 +14,7 @@ import (
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/golang/glog"
+	term "github.com/nsf/termbox-go"
 	"golang.org/x/image/colornames"
 )
 
@@ -49,6 +50,10 @@ func main() {
 	glog.Flush()
 }
 
+func reset() {
+	term.Sync()
+}
+
 func processAssembly(file string) (memory []uint16) {
 	assembly, err := readLines(file)
 	if err != nil {
@@ -76,6 +81,12 @@ func readLines(path string) ([]string, error) {
 func run() {
 	pc := uint16(0x0200)
 
+	err := term.Init()
+	if err != nil {
+		panic(err)
+	}
+	defer term.Close()
+
 	cfg := pixelgl.WindowConfig{
 		Title:  "L3C",
 		Bounds: pixel.R(0, 0, X, Y),
@@ -89,8 +100,9 @@ func run() {
 	}
 	imd := imdraw.New(nil)
 
-	fmt.Printf("\n%s\n", lc3)
+	glog.Infof("\n%s", lc3)
 
+	//L3Sim
 	go func() {
 		cycles := 0
 		timeStart := time.Now()
@@ -100,10 +112,25 @@ func run() {
 			if err != nil {
 				panic(err)
 			}
+			if glog.V(3) {
+				glog.Infof("\n%s", lc3)
+			}
 
 			//Process memory requests
 			if pc == memory[0x0025] {
 				break
+			}
+
+			//Console
+			//When DSR[15] is 0, there is a character ready to print
+			if (memory[0xFE04]&0x8000)>>15 == 0 {
+				//Print character in DDR[7:0]
+				fmt.Printf("%c", rune(uint8(memory[0xFE06])))
+				if glog.V(1) {
+					glog.Info("Printed char", rune(uint8(memory[0xFE06])))
+				}
+				//Set DSR[15] to 1 once printed
+				memory[0xFE04] = memory[0xFE04] | 0x8000
 			}
 
 			//Update cycle counter
@@ -116,15 +143,48 @@ func run() {
 		timeEnd := time.Now()
 		glog.Flush()
 
-		fmt.Printf("\n%s\n", lc3)
+		glog.Infof("\n%s", lc3)
 
 		nanosecondsPerCycle := float64(timeEnd.Sub(timeStart)) / float64(cycles)
 		secondsPerCycle := float64(nanosecondsPerCycle) / 1000.0 / 1000.0 / 1000.0
 		hertz := 1 / secondsPerCycle
 		siVal, siPrefix := humanize.ComputeSI(hertz)
-		fmt.Printf("%dcycles/%s = %4.2f%sHz\n", cycles, timeEnd.Sub(timeStart), siVal, siPrefix)
+		glog.Infof("%dcycles/%s = %4.2f%sHz\n", cycles, timeEnd.Sub(timeStart), siVal, siPrefix)
+
+		win.SetClosed(true)
 	}()
 
+	//Keyboard
+	go func() {
+	keyPressListenerLoop:
+		for {
+			switch ev := term.PollEvent(); ev.Type {
+			case term.EventKey:
+				switch ev.Key {
+				case term.KeyEsc:
+					win.SetClosed(true)
+					break keyPressListenerLoop
+				default:
+					reset()
+
+					//When KBSR[15] is 0, ready for new keyboard input
+					if (memory[0xFE00]&0x8000)>>15 == 0 {
+						//Set character into KBDR[7:0]
+						memory[0xFE02] = 0x0000 | uint16(uint8(ev.Ch))
+						//SET KBSR[15]
+						memory[0xFE00] = 0x8000
+						if glog.V(1) {
+							glog.Info("Recieved key", ev.Ch)
+						}
+					}
+				}
+			case term.EventError:
+				panic(ev.Err)
+			}
+		}
+	}()
+
+	//Display window
 	for !win.Closed() {
 		if (memory[0xFE14]&0x8000)>>15 == 1 {
 			if glog.V(2) {

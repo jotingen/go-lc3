@@ -33,10 +33,10 @@ xFE00 - xFFFF  Device register addresses
 
 
 Devices And Registers:
-xFE00  - KBSR  Keyboard Status Register: when KBSR[15] is 1, the keyboard has received a new character.
-xFE02  - KBDR  Keyboard Data Register: when a new character is available, KBSR[7:0] contains the ASCII value of the typed character.
-xFE04  - DSR   Display Status Register: when DSR[15] is 1, the display is ready to receive a new character to display.
-xFE06  - DDR   Display Data Register: when the display is ready, the display will print the ASCII character contained in DDR[7:0].
+xFE00    KBSR  Keyboard Status Register: when KBSR[15] is 1, the keyboard has received a new character.
+xFE02    KBDR  Keyboard Data Register: when a new character is available, KBSR[7:0] contains the ASCII value of the typed character.
+xFE04    DSR   Display Status Register: when DSR[15] is 1, the display is ready to receive a new character to display.
+xFE06    DDR   Display Data Register: when the display is ready, the display will print the ASCII character contained in DDR[7:0].
 xFE08 +  TMR   Timer Register: TMR[15] is 1 if the timer has gone off, and 0 otherwise.
 xFE0A +  TMI   Timer Interval Register: the number of milliseconds between timer ticks. 
                Setting this to 0 disables the timer, and setting it to 1 or more sets the timer.
