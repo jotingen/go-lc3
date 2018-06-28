@@ -105,7 +105,9 @@ func run() {
 	//L3Sim
 	go func() {
 		cycles := 0
+		cyclesConsoleRefresh := 0
 		timeStart := time.Now()
+		timeConsoleRefresh := time.Now()
 		for { //Breakout when PC reads HALT address
 			//Step through CPU
 			pc, err = lc3.Step()
@@ -135,10 +137,40 @@ func run() {
 
 			//Update cycle counter
 			cycles++
+			cyclesConsoleRefresh++
 
 			if cycles%10000000 == 0 {
 				glog.Flush()
 			}
+
+			//Update display
+			if time.Since(timeConsoleRefresh) > (16 * time.Millisecond) {
+
+				buffer := term.CellBuffer()
+
+				sCycles := fmt.Sprintf("%d", cycles)
+				for i, c := range sCycles {
+					buffer[i].Ch = c
+				}
+
+				timeEnd := time.Now()
+				nanosecondsPerCycle := float64(timeEnd.Sub(timeConsoleRefresh)) / float64(cyclesConsoleRefresh)
+				secondsPerCycle := float64(nanosecondsPerCycle) / 1000.0 / 1000.0 / 1000.0
+				hertz := 1 / secondsPerCycle
+				siVal, siPrefix := humanize.ComputeSI(hertz)
+				sHertz := fmt.Sprintf("%dcycles/%s = %4.2f%sHz\n", cyclesConsoleRefresh, timeEnd.Sub(timeConsoleRefresh), siVal, siPrefix)
+				for i, c := range sHertz {
+					buffer[i+10].Ch = c
+				}
+
+				err = term.Flush()
+				if err != nil {
+					panic(err)
+				}
+				timeConsoleRefresh = time.Now()
+				cyclesConsoleRefresh = 0
+			}
+
 		}
 		timeEnd := time.Now()
 		glog.Flush()
