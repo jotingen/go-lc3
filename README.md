@@ -47,12 +47,24 @@ xFE10 +  CLK3  Unix Epoch Time, bits [31:16]
                Provides a real world time value, based off of the unix epoch
 xFE12 +- MPR   Memory Protection Register
                Defines if memory range can be accessed in user mode
+               Modified slightly to accomodate for seperating the display buffer and device registers
                1:User access allowed 0:Only Superuser access allowed
-               [0]  - x0000-x0FFF
-               [1]  - x1000-x1FFF
-               [2]  - x2000-x2FFF
-               ...
-               [15] - xF000-xFFFF
+               [0]  - x0000-x0FFF - OS
+               [1]  - x1000-x1FFF - OS
+               [2]  - x2000-x2FFF - OS
+               [3]  - x3000-x3FFF - USER
+               [4]  - x4000-x4FFF - USER
+               [5]  - x5000-x5FFF - USER
+               [6]  - x6000-x6FFF - USER
+               [7]  - x7000-x7FFF - USER
+               [8]  - x8000-x8FFF - USER
+               [9]  - x9000-x9FFF - USER
+               [10] - xA000-xAFFF - USER
+               [11] - xB000-xBFFF - USER
+               [12] - xC000-xCFFF - VRAM/USER
+               [13] - xD000-xDFFF - VRAM/USER
+               [14] - xE000-xFDFF - VRAM/USER (Extended for VRAM)
+               [15] - xFE00-xFFFF - I/O       (Reduced for VRAM)
 xFE14 +  VCR   Video Control Register
                Sync bit for the video display.  The user program can set bit [15] to 1 when it is done writing to 
                the video memory.  The display controller will buffer the memory, and then set this bit back to 0 when done capturing.

@@ -71,7 +71,7 @@ func (lc3 *LC3) Init(pc uint16, m []uint16) {
 	for i := range lc3.Reg {
 		lc3.Reg[i] = uint16(rand.Intn(65536))
 	}
-	lc3.PSR.Privilege = true
+	lc3.PSR.Privilege = false
 	lc3.PC = pc
 	lc3.Memory = m
 	//fmt.Printf("Set PC: %04x\n", lc3.PC)
@@ -283,7 +283,6 @@ func (lc3 *LC3) Step() (uint16, error) {
 			glog.Infof("0x%04x: TRAP #%d\n", lc3.PC, int16(trapvect8))
 		}
 		lc3.Reg[7] = lc3.PC + 1
-		lc3.PSR.Privilege = true
 		lc3.PC = lc3.Memory[trapvect8]
 
 	default:

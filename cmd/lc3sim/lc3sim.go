@@ -27,9 +27,13 @@ const (
 	//Video output is memory-mapped from address location xC000 to xFDFF.
 	//The video display is 128 by 124 pixels (15,872 pixels total) and
 	//the coordinate system starts from (0,0) at the top left corner of the display
+
+	//SCALE is the scqling factor fo the window
 	SCALE = 3
-	X     = 128 * SCALE
-	Y     = 124 * SCALE
+	//X is the width in pixels of the window, after scaling
+	X = 128 * SCALE
+	//Y is the height in pixels of the window, after scaling
+	Y = 124 * SCALE
 )
 
 var (
@@ -38,12 +42,20 @@ var (
 	memory []uint16
 )
 
+type LC3 struct {
+	*lc3.LC3
+}
+
 func main() {
 	flag.StringVar(&in, "i", "", "Input assembly file")
-	flag.Lookup("log_dir").Value.Set(".")
+	err := flag.Lookup("log_dir").Value.Set(".")
+	if err != nil {
+		panic(err)
+	}
 	flag.Parse()
 
 	memory = processAssembly(in)
+	glog.Infof("%+v", memory)
 
 	pixelgl.Run(run)
 
@@ -51,14 +63,16 @@ func main() {
 }
 
 func reset() {
-	term.Sync()
+	err := term.Sync()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func processAssembly(file string) (memory []uint16) {
 	assembly, err := readLines(file)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
 	return asm2obj.Assemble(assembly)
 }
@@ -68,7 +82,12 @@ func readLines(path string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() {
+		err := file.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	var lines []string
 	scanner := bufio.NewScanner(file)
@@ -92,131 +111,150 @@ func run() {
 		Bounds: pixel.R(0, 0, X, Y),
 		VSync:  true,
 	}
-	lc3 := lc3.LC3{}
+	lc3 := LC3{&lc3.LC3{}}
 	lc3.Init(pc, memory)
 	win, err := pixelgl.NewWindow(cfg)
 	if err != nil {
 		panic(err)
 	}
-	imd := imdraw.New(nil)
 
 	glog.Infof("\n%s", lc3)
 
 	//L3Sim
-	go func() {
-		cycles := 0
-		cyclesConsoleRefresh := 0
-		timeStart := time.Now()
-		timeConsoleRefresh := time.Now()
-		for { //Breakout when PC reads HALT address
-			//Step through CPU
-			pc, err = lc3.Step()
+	go lc3.sim(win)
+
+	//Keyboard
+	go keyboard(win)
+
+	//Display window
+	display(win)
+}
+
+//L3Sim
+func (lc3 *LC3) sim(win *pixelgl.Window) {
+	cycles := 0
+	cyclesConsoleRefresh := 0
+	timeConsoleRefresh := time.Now()
+	for { //Breakout when PC reads HALT address
+		//Step through CPU
+		pc, err := lc3.Step()
+		if err != nil {
+			panic(err)
+		}
+		if glog.V(3) {
+			glog.Infof("\n%s", lc3)
+		}
+
+		//Process memory requests
+		if pc == memory[0x0025] {
+			break
+		}
+
+		//Console
+		//When DSR[15] is 0, there is a character ready to print
+		if (memory[0xFE04]&0x8000)>>15 == 0 {
+			//Print character in DDR[7:0]
+			fmt.Printf("%c", rune(uint8(memory[0xFE06])))
+			if glog.V(1) {
+				glog.Info("Printed char", rune(uint8(memory[0xFE06])))
+			}
+			//Set DSR[15] to 1 once printed
+			memory[0xFE04] = memory[0xFE04] | 0x8000
+		}
+
+		//Update cycle counter
+		cycles++
+		cyclesConsoleRefresh++
+
+		if cycles%10000000 == 0 {
+			glog.Flush()
+		}
+
+		//Update display
+		if time.Since(timeConsoleRefresh) > (16 * time.Millisecond) {
+
+			err = term.Sync()
 			if err != nil {
 				panic(err)
 			}
-			if glog.V(3) {
-				glog.Infof("\n%s", lc3)
+
+			termWidth, _ := term.Size()
+			buffer := term.CellBuffer()
+
+			sCycles := fmt.Sprintf("%d", cycles)
+			for i, c := range sCycles {
+				buffer[i].Ch = c
 			}
 
-			//Process memory requests
-			if pc == memory[0x0025] {
-				break
+			timeEnd := time.Now()
+			nanosecondsPerCycle := float64(timeEnd.Sub(timeConsoleRefresh)) / float64(cyclesConsoleRefresh)
+			secondsPerCycle := nanosecondsPerCycle / 1000.0 / 1000.0 / 1000.0
+			hertz := 1 / secondsPerCycle
+			siVal, siPrefix := humanize.ComputeSI(hertz)
+			sHertz := fmt.Sprintf("%2.0f%sHz\n", siVal, siPrefix)
+			for i, c := range sHertz {
+				buffer[i+10].Ch = c
 			}
 
-			//Console
-			//When DSR[15] is 0, there is a character ready to print
-			if (memory[0xFE04]&0x8000)>>15 == 0 {
-				//Print character in DDR[7:0]
-				fmt.Printf("%c", rune(uint8(memory[0xFE06])))
-				if glog.V(1) {
-					glog.Info("Printed char", rune(uint8(memory[0xFE06])))
+			for r := 0; r < 8; r++ {
+				for i, c := range fmt.Sprintf("R%d:%04X", r, lc3.Reg[r]) {
+					buffer[termWidth*1+r*8+i].Ch = c
 				}
-				//Set DSR[15] to 1 once printed
-				memory[0xFE04] = memory[0xFE04] | 0x8000
 			}
 
-			//Update cycle counter
-			cycles++
-			cyclesConsoleRefresh++
-
-			if cycles%10000000 == 0 {
-				glog.Flush()
+			for i, c := range fmt.Sprintf("PC:%04x %s\n", lc3.PC, lc3.PSR) {
+				buffer[termWidth*2+i].Ch = c
 			}
 
-			//Update display
-			if time.Since(timeConsoleRefresh) > (16 * time.Millisecond) {
-
-				buffer := term.CellBuffer()
-
-				sCycles := fmt.Sprintf("%d", cycles)
-				for i, c := range sCycles {
-					buffer[i].Ch = c
-				}
-
-				timeEnd := time.Now()
-				nanosecondsPerCycle := float64(timeEnd.Sub(timeConsoleRefresh)) / float64(cyclesConsoleRefresh)
-				secondsPerCycle := float64(nanosecondsPerCycle) / 1000.0 / 1000.0 / 1000.0
-				hertz := 1 / secondsPerCycle
-				siVal, siPrefix := humanize.ComputeSI(hertz)
-				sHertz := fmt.Sprintf("%dcycles/%s = %4.2f%sHz\n", cyclesConsoleRefresh, timeEnd.Sub(timeConsoleRefresh), siVal, siPrefix)
-				for i, c := range sHertz {
-					buffer[i+10].Ch = c
-				}
-
-				err = term.Flush()
-				if err != nil {
-					panic(err)
-				}
-				timeConsoleRefresh = time.Now()
-				cyclesConsoleRefresh = 0
+			err = term.Flush()
+			if err != nil {
+				panic(err)
 			}
-
+			timeConsoleRefresh = time.Now()
+			cyclesConsoleRefresh = 0
 		}
-		timeEnd := time.Now()
-		glog.Flush()
 
-		glog.Infof("\n%s", lc3)
+	}
+	glog.Flush()
 
-		nanosecondsPerCycle := float64(timeEnd.Sub(timeStart)) / float64(cycles)
-		secondsPerCycle := float64(nanosecondsPerCycle) / 1000.0 / 1000.0 / 1000.0
-		hertz := 1 / secondsPerCycle
-		siVal, siPrefix := humanize.ComputeSI(hertz)
-		glog.Infof("%dcycles/%s = %4.2f%sHz\n", cycles, timeEnd.Sub(timeStart), siVal, siPrefix)
+	glog.Infof("\n%s", lc3)
 
-		win.SetClosed(true)
-	}()
+	win.SetClosed(true)
+}
 
-	//Keyboard
-	go func() {
-	keyPressListenerLoop:
-		for {
-			switch ev := term.PollEvent(); ev.Type {
-			case term.EventKey:
-				switch ev.Key {
-				case term.KeyEsc:
-					win.SetClosed(true)
-					break keyPressListenerLoop
-				default:
-					reset()
+//Keyboard
+func keyboard(win *pixelgl.Window) {
+keyPressListenerLoop:
+	for {
+		switch ev := term.PollEvent(); ev.Type {
+		case term.EventKey:
+			switch ev.Key {
+			case term.KeyEsc:
+				win.SetClosed(true)
+				break keyPressListenerLoop
+			default:
+				reset()
 
-					//When KBSR[15] is 0, ready for new keyboard input
-					if (memory[0xFE00]&0x8000)>>15 == 0 {
-						//Set character into KBDR[7:0]
-						memory[0xFE02] = 0x0000 | uint16(uint8(ev.Ch))
-						//SET KBSR[15]
-						memory[0xFE00] = 0x8000
-						if glog.V(1) {
-							glog.Info("Recieved key", ev.Ch)
-						}
+				//When KBSR[15] is 0, ready for new keyboard input
+				if (memory[0xFE00]&0x8000)>>15 == 0 {
+					//Set character into KBDR[7:0]
+					memory[0xFE02] = 0x0000 | uint16(uint8(ev.Ch))
+					//SET KBSR[15]
+					memory[0xFE00] = 0x8000
+					if glog.V(1) {
+						glog.Info("Recieved key", ev.Ch)
 					}
 				}
-			case term.EventError:
-				panic(ev.Err)
 			}
+		case term.EventError:
+			panic(ev.Err)
 		}
-	}()
+	}
+}
 
-	//Display window
+//Display window
+func display(win *pixelgl.Window) {
+	imd := imdraw.New(nil)
 	for !win.Closed() {
 		if (memory[0xFE14]&0x8000)>>15 == 1 {
 			if glog.V(2) {
@@ -240,16 +278,6 @@ func run() {
 					imd.Push(pixel.V(float64(x*SCALE), float64((Y/SCALE-y-1)*SCALE)))
 					imd.Push(pixel.V(float64(x*SCALE+SCALE), float64((Y/SCALE-y-1)*SCALE+SCALE)))
 					imd.Rectangle(0)
-
-					//if x < 7 && y == 0 {
-					//	fmt.Printf("%d:%d 0x%04x %3.1f:%3.1f:%3.1f %3.1f:%3.1f %3.1f:%3.1f\n", x, y, addr,
-					//		float64((memory[addr]&0x7C00)>>10)/32,
-					//		float64((memory[addr]&0x0380)>>5)/32,
-					//		float64((memory[addr]&0x001F)>>0)/32,
-					//		float64(x*SCALE), float64((Y/SCALE-y-1)*SCALE),
-					//		float64(x*SCALE+SCALE), float64((Y/SCALE-y-1)*SCALE+SCALE),
-					//	)
-					//}
 				}
 			}
 			imd.Draw(win)
@@ -258,7 +286,4 @@ func run() {
 		}
 
 	}
-	////Just loop so i can see the display
-	//for {
-	//}
 }
