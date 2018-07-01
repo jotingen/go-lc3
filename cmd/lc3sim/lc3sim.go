@@ -40,8 +40,11 @@ var (
 	in string
 
 	memory []uint16
+
+	targetSpeed float64 = 500 //nanoseconds
 )
 
+//LC3 is a wrapper around the lc3 model to allow for additional methods to be added
 type LC3 struct {
 	*lc3.LC3
 }
@@ -135,7 +138,13 @@ func (lc3 *LC3) sim(win *pixelgl.Window) {
 	cycles := 0
 	cyclesConsoleRefresh := 0
 	timeConsoleRefresh := time.Now()
+
+	cycleTime := time.Now()
+
 	for { //Breakout when PC reads HALT address
+		time.Sleep(100*time.Millisecond - time.Since(cycleTime))
+		cycleTime = time.Now()
+
 		//Step through CPU
 		pc, err := lc3.Step()
 		if err != nil {
@@ -224,8 +233,14 @@ func (lc3 *LC3) sim(win *pixelgl.Window) {
 
 //Keyboard
 func keyboard(win *pixelgl.Window) {
+	//Poll at 125Hz
+	cycleTime := time.Now()
+
 keyPressListenerLoop:
 	for {
+		time.Sleep(8*time.Millisecond - time.Since(cycleTime))
+		cycleTime = time.Now()
+
 		switch ev := term.PollEvent(); ev.Type {
 		case term.EventKey:
 			switch ev.Key {
