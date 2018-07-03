@@ -202,6 +202,19 @@ func keyboard(win *pixelgl.Window) {
 				case term.KeyEsc:
 					win.SetClosed(true)
 					break keyPressListenerLoop
+				case term.KeyEnter:
+					reset()
+
+					//When KBSR[15] is 0, ready for new keyboard input
+					if (memory[0xFE00]&0x8000)>>15 == 0 {
+						//Set character into KBDR[7:0]
+						memory[0xFE02] = 0x0000 | uint16(uint8('\n'))
+						//SET KBSR[15]
+						memory[0xFE00] = 0x8000
+						if glog.V(1) {
+							glog.Info("Recieved key \\n")
+						}
+					}
 				default:
 					reset()
 
@@ -230,6 +243,18 @@ func keyboard(win *pixelgl.Window) {
 			if win.JustPressed(pixelgl.KeyEscape) {
 				win.SetClosed(true)
 			}
+			if win.JustPressed(pixelgl.KeyEnter) {
+				//When KBSR[15] is 0, ready for new keyboard input
+				if (memory[0xFE00]&0x8000)>>15 == 0 {
+					//Set character into KBDR[7:0]
+					memory[0xFE02] = 0x0000 | uint16(uint8('\n'))
+					//SET KBSR[15]
+					memory[0xFE00] = 0x8000
+					if glog.V(1) {
+						glog.Info("Recieved key \\n")
+					}
+				}
+			}
 			s := win.Typed()
 			if s != "" {
 				//When KBSR[15] is 0, ready for new keyboard input
@@ -252,53 +277,54 @@ func keyboard(win *pixelgl.Window) {
 
 //Terminal window
 func terminal(win *pixelgl.Window, lc3 *LC3) {
-	cyclesConsoleRefresh := 0
+
+	cyclesConsoleRefresh := cycles
 	timeConsoleRefresh := time.Now()
 	for !win.Closed() {
 		//Update display
-		if time.Since(timeConsoleRefresh) > (16 * time.Millisecond) {
 
-			err := term.Sync()
-			if err != nil {
-				panic(err)
-			}
-
-			termWidth, _ := term.Size()
-			buffer := term.CellBuffer()
-
-			sCycles := fmt.Sprintf("%d", cycles)
-			for i, c := range sCycles {
-				buffer[i].Ch = c
-			}
-
-			timeEnd := time.Now()
-			nanosecondsPerCycle := float64(timeEnd.Sub(timeConsoleRefresh)) / float64(cyclesConsoleRefresh)
-			secondsPerCycle := nanosecondsPerCycle / 1000.0 / 1000.0 / 1000.0
-			hertz := 1 / secondsPerCycle
-			siVal, siPrefix := humanize.ComputeSI(hertz)
-			sHertz := fmt.Sprintf("%2.0f%sHz\n", siVal, siPrefix)
-			for i, c := range sHertz {
-				buffer[i+10].Ch = c
-			}
-
-			for r := 0; r < 8; r++ {
-				for i, c := range fmt.Sprintf("R%d:%04X", r, lc3.Reg[r]) {
-					buffer[termWidth*1+r*8+i].Ch = c
-				}
-			}
-
-			for i, c := range fmt.Sprintf("PC:%04x %s\n", lc3.PC, lc3.PSR) {
-				buffer[termWidth*2+i].Ch = c
-			}
-
-			err = term.Flush()
-			if err != nil {
-				panic(err)
-			}
-			timeConsoleRefresh = time.Now()
-			cyclesConsoleRefresh = 0
+		err := term.Sync()
+		if err != nil {
+			panic(err)
 		}
-		cyclesConsoleRefresh++
+
+		termWidth, _ := term.Size()
+		buffer := term.CellBuffer()
+
+		sCycles := fmt.Sprintf("%d", cycles)
+		for i, c := range sCycles {
+			buffer[i].Ch = c
+		}
+
+		timeEnd := time.Now()
+		nanosecondsPerCycle := float64(timeEnd.Sub(timeConsoleRefresh)) / float64(cycles-cyclesConsoleRefresh)
+		secondsPerCycle := nanosecondsPerCycle / 1000.0 / 1000.0 / 1000.0
+		hertz := 1 / secondsPerCycle
+		siVal, siPrefix := humanize.ComputeSI(hertz)
+		sHertz := fmt.Sprintf("%2.0f%sHz\n", siVal, siPrefix)
+		for i, c := range sHertz {
+			buffer[i+10].Ch = c
+		}
+
+		for r := 0; r < 8; r++ {
+			for i, c := range fmt.Sprintf("R%d:%04X", r, lc3.Reg[r]) {
+				buffer[termWidth*1+r*8+i].Ch = c
+			}
+		}
+
+		for i, c := range fmt.Sprintf("PC:%04x %s\n", lc3.PC, lc3.PSR) {
+			buffer[termWidth*2+i].Ch = c
+		}
+
+		err = term.Flush()
+		if err != nil {
+			panic(err)
+		}
+
+		timeConsoleRefresh = time.Now()
+		cyclesConsoleRefresh = cycles
+
+		<-fps
 	}
 }
 
