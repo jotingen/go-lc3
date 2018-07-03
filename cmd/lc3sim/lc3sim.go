@@ -45,7 +45,7 @@ var (
 
 	cycles int64 = 0
 
-	fps = time.Tick(time.Second / 60)
+	fps = time.Tick(time.Second / 120)
 )
 
 //LC3 is a wrapper around the lc3 model to allow for additional methods to be added
@@ -118,7 +118,6 @@ func run() {
 	cfg := pixelgl.WindowConfig{
 		Title:  "L3C",
 		Bounds: pixel.R(0, 0, X, Y),
-		VSync:  true,
 	}
 
 	lc3 := LC3{&lc3.LC3{}}
