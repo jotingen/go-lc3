@@ -42,6 +42,10 @@ var (
 	memory []uint16
 
 	targetSpeed float64 = 2000000 //Hz
+
+	cycles int64 = 0
+
+	fps = time.Tick(time.Second / 60)
 )
 
 //LC3 is a wrapper around the lc3 model to allow for additional methods to be added
@@ -103,17 +107,20 @@ func readLines(path string) ([]string, error) {
 func run() {
 	pc := uint16(0x0200)
 
+	//Create Terminal
 	err := term.Init()
 	if err != nil {
 		panic(err)
 	}
 	defer term.Close()
 
+	//Create Window
 	cfg := pixelgl.WindowConfig{
 		Title:  "L3C",
 		Bounds: pixel.R(0, 0, X, Y),
 		VSync:  true,
 	}
+
 	lc3 := LC3{&lc3.LC3{}}
 	lc3.Init(pc, memory)
 	win, err := pixelgl.NewWindow(cfg)
@@ -129,15 +136,15 @@ func run() {
 	//Keyboard
 	go keyboard(win)
 
+	//Terminal window
+	go terminal(win, &lc3)
+
 	//Display window
 	display(win)
 }
 
 //L3Sim
 func (lc3 *LC3) sim(win *pixelgl.Window) {
-	cycles := 0
-	cyclesConsoleRefresh := 0
-	timeConsoleRefresh := time.Now()
 
 	for { //Breakout when PC reads HALT address
 
@@ -169,16 +176,89 @@ func (lc3 *LC3) sim(win *pixelgl.Window) {
 
 		//Update cycle counter
 		cycles++
-		cyclesConsoleRefresh++
 
 		if cycles%10000000 == 0 {
 			glog.Flush()
 		}
 
+	}
+	glog.Flush()
+
+	glog.Infof("\n%s", lc3)
+
+	win.SetClosed(true)
+}
+
+//Keyboard
+func keyboard(win *pixelgl.Window) {
+
+	//Listen from terminal
+	go func() {
+	keyPressListenerLoop:
+		for !win.Closed() {
+			switch ev := term.PollEvent(); ev.Type {
+			case term.EventKey:
+				switch ev.Key {
+				case term.KeyEsc:
+					win.SetClosed(true)
+					break keyPressListenerLoop
+				default:
+					reset()
+
+					//When KBSR[15] is 0, ready for new keyboard input
+					if (memory[0xFE00]&0x8000)>>15 == 0 {
+						//Set character into KBDR[7:0]
+						memory[0xFE02] = 0x0000 | uint16(uint8(ev.Ch))
+						//SET KBSR[15]
+						memory[0xFE00] = 0x8000
+						if glog.V(1) {
+							glog.Info("Recieved key", ev.Ch)
+						}
+					}
+				}
+			case term.EventError:
+				panic(ev.Err)
+			}
+
+			<-fps
+		}
+	}()
+
+	//Listen from window
+	go func() {
+		for !win.Closed() {
+			if win.JustPressed(pixelgl.KeyEscape) {
+				win.SetClosed(true)
+			}
+			s := win.Typed()
+			if s != "" {
+				//When KBSR[15] is 0, ready for new keyboard input
+				if (memory[0xFE00]&0x8000)>>15 == 0 {
+					//Set character into KBDR[7:0]
+					memory[0xFE02] = 0x0000 | uint16(uint8([]rune(s)[0]))
+					//SET KBSR[15]
+					memory[0xFE00] = 0x8000
+					if glog.V(1) {
+						glog.Info("Recieved key", []rune(s)[0])
+					}
+				}
+			}
+
+			<-fps
+		}
+	}()
+
+}
+
+//Terminal window
+func terminal(win *pixelgl.Window, lc3 *LC3) {
+	cyclesConsoleRefresh := 0
+	timeConsoleRefresh := time.Now()
+	for !win.Closed() {
 		//Update display
 		if time.Since(timeConsoleRefresh) > (16 * time.Millisecond) {
 
-			err = term.Sync()
+			err := term.Sync()
 			if err != nil {
 				panic(err)
 			}
@@ -218,47 +298,13 @@ func (lc3 *LC3) sim(win *pixelgl.Window) {
 			timeConsoleRefresh = time.Now()
 			cyclesConsoleRefresh = 0
 		}
-
-	}
-	glog.Flush()
-
-	glog.Infof("\n%s", lc3)
-
-	win.SetClosed(true)
-}
-
-//Keyboard
-func keyboard(win *pixelgl.Window) {
-keyPressListenerLoop:
-	for {
-		switch ev := term.PollEvent(); ev.Type {
-		case term.EventKey:
-			switch ev.Key {
-			case term.KeyEsc:
-				win.SetClosed(true)
-				break keyPressListenerLoop
-			default:
-				reset()
-
-				//When KBSR[15] is 0, ready for new keyboard input
-				if (memory[0xFE00]&0x8000)>>15 == 0 {
-					//Set character into KBDR[7:0]
-					memory[0xFE02] = 0x0000 | uint16(uint8(ev.Ch))
-					//SET KBSR[15]
-					memory[0xFE00] = 0x8000
-					if glog.V(1) {
-						glog.Info("Recieved key", ev.Ch)
-					}
-				}
-			}
-		case term.EventError:
-			panic(ev.Err)
-		}
+		cyclesConsoleRefresh++
 	}
 }
 
 //Display window
 func display(win *pixelgl.Window) {
+
 	imd := imdraw.New(nil)
 	for !win.Closed() {
 		if (memory[0xFE14]&0x8000)>>15 == 1 {
@@ -286,9 +332,11 @@ func display(win *pixelgl.Window) {
 				}
 			}
 			imd.Draw(win)
-			win.Update()
+
 			memory[0xFE14] = 0x7FFF
 		}
+		win.Update()
 
+		<-fps
 	}
 }
