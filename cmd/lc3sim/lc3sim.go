@@ -288,7 +288,7 @@ func terminal(win *pixelgl.Window, lc3 *LC3) {
 		}
 
 		//Cycles R0C0
-		writeToBox(0, 0, fmt.Sprintf("%d", cycles))
+		writeToTerm(0, 0, fmt.Sprintf("%d", cycles))
 
 		//Frequency
 		timeEnd := time.Now()
@@ -297,22 +297,22 @@ func terminal(win *pixelgl.Window, lc3 *LC3) {
 		hertz := 1 / secondsPerCycle
 		siVal, siPrefix := humanize.ComputeSI(hertz)
 		sHertz := fmt.Sprintf("%2.0f%sHz", siVal, siPrefix)
-		writeToBox(0, 10, sHertz)
+		writeToTerm(0, 10, sHertz)
 
 		//Registers
 		for r := 0; r < 8; r++ {
-			writeToBox(1, r*8, fmt.Sprintf("R%d:%04X", r, lc3.Reg[r]))
+			writeToTerm(1, r*8, fmt.Sprintf("R%d:%04X", r, lc3.Reg[r]))
 		}
 
-		writeToBox(2, 0, fmt.Sprintf("PC:%04x %s", lc3.PC, lc3.PSR))
-		writeToBox(3, 0, fmt.Sprintf("KBSR:%04x KBDR:%04x", lc3.Memory[0xFE00], lc3.Memory[0xFE02]))
-		writeToBox(4, 0, fmt.Sprintf(" DSR:%04x  DDR:%04x", lc3.Memory[0xFE04], lc3.Memory[0xFE06]))
-		writeToBox(5, 0, fmt.Sprintf(" TMR:%04x  TMI:%04x", lc3.Memory[0xFE08], lc3.Memory[0xFE0A]))
-		writeToBox(6, 0, fmt.Sprintf("CLK1:%04x CLK2:%04x CLK3:%04x", lc3.Memory[0xFE0C], lc3.Memory[0xFE0E], lc3.Memory[0xFE10]))
-		writeToBox(7, 0, fmt.Sprintf(" MPR:%04x", lc3.Memory[0xFE12]))
-		writeToBox(8, 0, fmt.Sprintf(" VCR:%04x", lc3.Memory[0xFE14]))
-		writeToBox(9, 0, fmt.Sprintf(" MCR:%04x", lc3.Memory[0xFFFE]))
-		writeToBox(10, 0, fmt.Sprintf(" MCC:%04x", lc3.Memory[0xFFFF]))
+		writeToTerm(2, 0, fmt.Sprintf("PC:%04x %s", lc3.PC, lc3.PSR))
+		writeToTerm(3, 0, fmt.Sprintf("KBSR:%04x KBDR:%04x", lc3.Memory[0xFE00], lc3.Memory[0xFE02]))
+		writeToTerm(4, 0, fmt.Sprintf(" DSR:%04x  DDR:%04x", lc3.Memory[0xFE04], lc3.Memory[0xFE06]))
+		writeToTerm(5, 0, fmt.Sprintf(" TMR:%04x  TMI:%04x", lc3.Memory[0xFE08], lc3.Memory[0xFE0A]))
+		writeToTerm(6, 0, fmt.Sprintf("CLK1:%04x CLK2:%04x CLK3:%04x", lc3.Memory[0xFE0C], lc3.Memory[0xFE0E], lc3.Memory[0xFE10]))
+		writeToTerm(7, 0, fmt.Sprintf(" MPR:%04x", lc3.Memory[0xFE12]))
+		writeToTerm(8, 0, fmt.Sprintf(" VCR:%04x", lc3.Memory[0xFE14]))
+		writeToTerm(9, 0, fmt.Sprintf(" MCR:%04x", lc3.Memory[0xFFFE]))
+		writeToTerm(10, 0, fmt.Sprintf(" MCC:%04x", lc3.Memory[0xFFFF]))
 		err = term.Flush()
 		if err != nil {
 			panic(err)
@@ -325,7 +325,7 @@ func terminal(win *pixelgl.Window, lc3 *LC3) {
 	}
 }
 
-func writeToBox(row, col int, s string) {
+func writeToTerm(row, col int, s string) {
 
 	termWidth, _ := term.Size()
 	currentRow := row
