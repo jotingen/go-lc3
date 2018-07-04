@@ -282,39 +282,37 @@ func terminal(win *pixelgl.Window, lc3 *LC3) {
 	for !win.Closed() {
 		//Update display
 
-		err := term.Sync()
+		err := term.Clear(term.ColorGreen, term.ColorBlack)
 		if err != nil {
 			panic(err)
 		}
 
-		termWidth, _ := term.Size()
-		buffer := term.CellBuffer()
+		//Cycles R0C0
+		writeToBox(0, 0, fmt.Sprintf("%d", cycles))
 
-		sCycles := fmt.Sprintf("%d", cycles)
-		for i, c := range sCycles {
-			buffer[i].Ch = c
-		}
-
+		//Frequency
 		timeEnd := time.Now()
 		nanosecondsPerCycle := float64(timeEnd.Sub(timeConsoleRefresh)) / float64(cycles-cyclesConsoleRefresh)
 		secondsPerCycle := nanosecondsPerCycle / 1000.0 / 1000.0 / 1000.0
 		hertz := 1 / secondsPerCycle
 		siVal, siPrefix := humanize.ComputeSI(hertz)
-		sHertz := fmt.Sprintf("%2.0f%sHz\n", siVal, siPrefix)
-		for i, c := range sHertz {
-			buffer[i+10].Ch = c
-		}
+		sHertz := fmt.Sprintf("%2.0f%sHz", siVal, siPrefix)
+		writeToBox(0, 10, sHertz)
 
+		//Registers
 		for r := 0; r < 8; r++ {
-			for i, c := range fmt.Sprintf("R%d:%04X", r, lc3.Reg[r]) {
-				buffer[termWidth*1+r*8+i].Ch = c
-			}
+			writeToBox(1, r*8, fmt.Sprintf("R%d:%04X", r, lc3.Reg[r]))
 		}
 
-		for i, c := range fmt.Sprintf("PC:%04x %s\n", lc3.PC, lc3.PSR) {
-			buffer[termWidth*2+i].Ch = c
-		}
-
+		writeToBox(2, 0, fmt.Sprintf("PC:%04x %s", lc3.PC, lc3.PSR))
+		writeToBox(3, 0, fmt.Sprintf("KBSR:%04x KBDR:%04x", lc3.Memory[0xFE00], lc3.Memory[0xFE02]))
+		writeToBox(4, 0, fmt.Sprintf(" DSR:%04x  DDR:%04x", lc3.Memory[0xFE04], lc3.Memory[0xFE06]))
+		writeToBox(5, 0, fmt.Sprintf(" TMR:%04x  TMI:%04x", lc3.Memory[0xFE08], lc3.Memory[0xFE0A]))
+		writeToBox(6, 0, fmt.Sprintf("CLK1:%04x CLK2:%04x CLK3:%04x", lc3.Memory[0xFE0C], lc3.Memory[0xFE0E], lc3.Memory[0xFE10]))
+		writeToBox(7, 0, fmt.Sprintf(" MPR:%04x", lc3.Memory[0xFE12]))
+		writeToBox(8, 0, fmt.Sprintf(" VCR:%04x", lc3.Memory[0xFE14]))
+		writeToBox(9, 0, fmt.Sprintf(" MCR:%04x", lc3.Memory[0xFFFE]))
+		writeToBox(10, 0, fmt.Sprintf(" MCC:%04x", lc3.Memory[0xFFFF]))
 		err = term.Flush()
 		if err != nil {
 			panic(err)
@@ -324,6 +322,19 @@ func terminal(win *pixelgl.Window, lc3 *LC3) {
 		cyclesConsoleRefresh = cycles
 
 		<-fps
+	}
+}
+
+func writeToBox(row, col int, s string) {
+
+	termWidth, _ := term.Size()
+	currentRow := row
+	for i, c := range s {
+		if c == '\n' {
+			currentRow += 1
+		} else {
+			term.CellBuffer()[termWidth*currentRow+col+i].Ch = c
+		}
 	}
 }
 

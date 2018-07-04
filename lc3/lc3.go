@@ -318,11 +318,11 @@ func (lc3 *LC3) Step() (uint16, error) {
 	//Update clock register
 	time := time.Now()
 	//CLK1
-	lc3.Memory[0xFE0C] = uint16(uint64(time.Nanosecond()) / 1e9 * 32768)
+	lc3.Memory[0xFE0C] = uint16(uint64(time.Nanosecond()) / 1e3)
 	//CLK2
-	lc3.Memory[0xFE0C] = uint16(uint64(time.Unix()) & 0xFFFF)
+	lc3.Memory[0xFE0E] = uint16(uint64(time.Unix()) & 0xFFFF)
 	//CLK3
-	lc3.Memory[0xFE0C] = uint16((uint64(time.Unix()) & 0xFFFF0000) >> 16)
+	lc3.Memory[0xFE10] = uint16((uint64(time.Unix()) & 0xFFFF0000) >> 16)
 
 	//Increment MCC
 	lc3.Memory[0xFFFF]++
