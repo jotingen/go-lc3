@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -161,18 +162,6 @@ func (lc3 *LC3) sim(win *pixelgl.Window) {
 			break
 		}
 
-		//Console
-		//When DSR[15] is 0, there is a character ready to print
-		if (memory[0xFE04]&0x8000)>>15 == 0 {
-			//Print character in DDR[7:0]
-			fmt.Printf("%c", rune(uint8(memory[0xFE06])))
-			if glog.V(1) {
-				glog.Info("Printed char", rune(uint8(memory[0xFE06])))
-			}
-			//Set DSR[15] to 1 once printed
-			memory[0xFE04] = memory[0xFE04] | 0x8000
-		}
-
 		//Update cycle counter
 		cycles++
 
@@ -277,6 +266,15 @@ func keyboard(win *pixelgl.Window) {
 //Terminal window
 func terminal(win *pixelgl.Window, lc3 *LC3) {
 
+	termWidth, termHeight := term.Size()
+
+	buffer := make([][]rune, termHeight-12)
+	for i := range buffer {
+		buffer[i] = make([]rune, termWidth)
+	}
+	bufferCol := 0
+	bufferRow := 0
+
 	cyclesConsoleRefresh := cycles
 	timeConsoleRefresh := time.Now()
 	for !win.Closed() {
@@ -299,20 +297,52 @@ func terminal(win *pixelgl.Window, lc3 *LC3) {
 		sHertz := fmt.Sprintf("%2.0f%sHz", siVal, siPrefix)
 		writeToTerm(0, 10, sHertz)
 
-		//Registers
-		for r := 0; r < 8; r++ {
-			writeToTerm(1, r*8, fmt.Sprintf("R%d:%04X", r, lc3.Reg[r]))
+		//Status
+		writeToTerm(1, 0, lc3.String())
+
+		//Seperator
+		writeToTerm(11, 0, strings.Repeat("-", termWidth))
+
+		//Console Output
+		//When DSR[15] is 0, there is a character ready to print
+		if (memory[0xFE04]&0x8000)>>15 == 0 {
+			//Print character in DDR[7:0]
+			//fmt.Printf("%c", rune(uint8(memory[0xFE06])))
+			c := rune(uint8(memory[0xFE06]))
+			if c == '\n' {
+				bufferRow += 1
+				bufferCol = 0
+			} else {
+				buffer[bufferRow][bufferCol] = rune(uint8(memory[0xFE06]))
+				bufferCol += 1
+				if bufferCol > termWidth-1 {
+					bufferRow += 1
+					bufferCol = 0
+				}
+			}
+			if bufferRow > termHeight-12-1 {
+				for r := range buffer {
+					if r != 0 {
+						buffer[r-1] = buffer[r]
+					}
+					if r == len(buffer)-1 {
+						buffer[r] = make([]rune, termWidth)
+					}
+				}
+				bufferRow = termHeight - 12 - 1
+			}
+
+			if glog.V(1) {
+				glog.Info("Printed char", rune(uint8(memory[0xFE06])))
+			}
+			//Set DSR[15] to 1 once printed
+			memory[0xFE04] = memory[0xFE04] | 0x8000
+		}
+		for r, row := range buffer {
+
+			writeToTerm(r+12, 0, string(row))
 		}
 
-		writeToTerm(2, 0, fmt.Sprintf("PC:%04x %s", lc3.PC, lc3.PSR))
-		writeToTerm(3, 0, fmt.Sprintf("KBSR:%04x KBDR:%04x", lc3.Memory[0xFE00], lc3.Memory[0xFE02]))
-		writeToTerm(4, 0, fmt.Sprintf(" DSR:%04x  DDR:%04x", lc3.Memory[0xFE04], lc3.Memory[0xFE06]))
-		writeToTerm(5, 0, fmt.Sprintf(" TMR:%04x  TMI:%04x", lc3.Memory[0xFE08], lc3.Memory[0xFE0A]))
-		writeToTerm(6, 0, fmt.Sprintf("CLK1:%04x CLK2:%04x CLK3:%04x", lc3.Memory[0xFE0C], lc3.Memory[0xFE0E], lc3.Memory[0xFE10]))
-		writeToTerm(7, 0, fmt.Sprintf(" MPR:%04x", lc3.Memory[0xFE12]))
-		writeToTerm(8, 0, fmt.Sprintf(" VCR:%04x", lc3.Memory[0xFE14]))
-		writeToTerm(9, 0, fmt.Sprintf(" MCR:%04x", lc3.Memory[0xFFFE]))
-		writeToTerm(10, 0, fmt.Sprintf(" MCC:%04x", lc3.Memory[0xFFFF]))
 		err = term.Flush()
 		if err != nil {
 			panic(err)
@@ -329,11 +359,14 @@ func writeToTerm(row, col int, s string) {
 
 	termWidth, _ := term.Size()
 	currentRow := row
-	for i, c := range s {
+	currentCol := col
+	for _, c := range s {
 		if c == '\n' {
 			currentRow += 1
+			currentCol = col
 		} else {
-			term.CellBuffer()[termWidth*currentRow+col+i].Ch = c
+			term.CellBuffer()[termWidth*currentRow+currentCol].Ch = c
+			currentCol += 1
 		}
 	}
 }
