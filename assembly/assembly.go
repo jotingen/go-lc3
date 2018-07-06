@@ -1,4 +1,4 @@
-package asm2obj
+package assembly
 
 //go:generate go-bindata -pkg $GOPACKAGE -o lc3os.go lc3os.asm
 
@@ -840,4 +840,173 @@ func replaceLabelAsOffset(line string, currentPC uint16) string {
 	}
 	//fmt.Printf("Created: %s\n", line)
 	return line
+}
+
+func Dissassemble(inst uint16) string {
+
+	op := Extract1C(inst, 15, 12)
+	switch op {
+
+	case 0x1: //ADD
+		dr := Extract1C(inst, 11, 9)
+		sr1 := Extract1C(inst, 8, 6)
+		bit5 := Extract1C(inst, 5, 5)
+		if bit5 == 1 {
+			imm5 := Extract2C(inst, 4, 0)
+			return fmt.Sprintf("ADD R%d,R%d,#%d\n", dr, sr1, int16(imm5))
+		} else {
+			sr2 := Extract1C(inst, 2, 0)
+			return fmt.Sprintf("ADD R%d,R%d,R%d\n", dr, sr1, sr2)
+		}
+
+	case 0x5: //AND
+		dr := Extract1C(inst, 11, 9)
+		sr1 := Extract1C(inst, 8, 6)
+		bit5 := Extract1C(inst, 5, 5)
+		if bit5 == 1 {
+			imm5 := Extract2C(inst, 4, 0)
+			return fmt.Sprintf("AND R%d,R%d,#%d\n", dr, sr1, int16(imm5))
+		} else {
+			sr2 := Extract1C(inst, 2, 0)
+			return fmt.Sprintf("AND R%d,R%d,R%d\n", dr, sr1, sr2)
+		}
+
+	case 0x0: //BR
+		n := Extract1C(inst, 11, 11) == 1
+		z := Extract1C(inst, 10, 10) == 1
+		p := Extract1C(inst, 9, 9) == 1
+		PCoffset9 := Extract2C(inst, 8, 0)
+
+		brString := fmt.Sprintf("BR")
+		if n {
+			brString += fmt.Sprintf("n")
+		}
+		if z {
+			brString += fmt.Sprintf("z")
+		}
+		if p {
+			brString += fmt.Sprintf("p")
+		}
+		brString += fmt.Sprintf(" #%d\n", int16(PCoffset9))
+		return brString
+
+	case 0xC: //JMP/RET
+		baseR := Extract1C(inst, 8, 6)
+		return fmt.Sprintf("JMP R%d\n", baseR)
+
+	case 0x4: //JSR/JSRR
+		bit11 := Extract1C(inst, 11, 11)
+		if bit11 == 1 {
+
+			PCoffset11 := Extract2C(inst, 10, 0)
+			return fmt.Sprintf("JSR #%d\n", int16(PCoffset11))
+
+		} else {
+			baseR := Extract2C(inst, 8, 6)
+			return fmt.Sprintf("JSRR R%d\n", baseR)
+		}
+
+	case 0x2: //LD
+		dr := Extract1C(inst, 11, 9)
+		PCoffset9 := Extract2C(inst, 8, 0)
+		return fmt.Sprintf("LD R%d #%d\n", dr, int16(PCoffset9))
+
+	case 0xA: //LDI
+		dr := Extract1C(inst, 11, 9)
+		PCoffset9 := Extract2C(inst, 8, 0)
+		return fmt.Sprintf("LDI R%d #%d\n", dr, int16(PCoffset9))
+
+	case 0x6: //LDR
+		dr := Extract1C(inst, 11, 9)
+		baseR := Extract1C(inst, 8, 6)
+		offset6 := Extract2C(inst, 5, 0)
+		return fmt.Sprintf("LDR R%d R%d #%d\n", dr, baseR, int16(offset6))
+
+	case 0xE: //LEA
+		dr := Extract1C(inst, 11, 9)
+		PCoffset9 := Extract2C(inst, 8, 0)
+		return fmt.Sprintf("LEA R%d #%d\n", dr, int16(PCoffset9))
+
+	case 0x9: //NOT
+		dr := Extract1C(inst, 11, 9)
+		sr := Extract1C(inst, 8, 6)
+		return fmt.Sprintf("NOT R%d R%d\n", dr, sr)
+
+	case 0x8: //RTI
+
+		return fmt.Sprintf("RTI\n")
+
+	case 0x3: //ST
+		sr := Extract1C(inst, 11, 9)
+		PCoffset9 := Extract2C(inst, 8, 0)
+		return fmt.Sprintf("ST R%d #%d\n", sr, int16(PCoffset9))
+
+	case 0xB: //STI
+		sr := Extract1C(inst, 11, 9)
+		PCoffset9 := Extract2C(inst, 8, 0)
+		return fmt.Sprintf("STI R%d #%d\n", sr, int16(PCoffset9))
+
+	case 0x7: //STR
+		sr := Extract1C(inst, 11, 9)
+		baseR := Extract1C(inst, 8, 6)
+		offset6 := Extract2C(inst, 5, 0)
+		return fmt.Sprintf("ST R%d R%d #%d\n", sr, baseR, int16(offset6))
+
+	case 0xF: //TRAP
+		trapvect8 := Extract1C(inst, 7, 0)
+		return fmt.Sprintf("TRAP #%d\n", int16(trapvect8))
+
+	default:
+		return "Unknown"
+
+	}
+
+}
+
+func Extract1C(inst uint16, hi, lo int) uint16 {
+	//fmt.Printf("Inst %04x %d %d ", inst, hi, lo)
+	if hi >= 16 || hi < 0 || lo >= 16 || lo < 0 {
+		fmt.Println("Argument out of bounds")
+	}
+
+	//Build mask
+	mask := uint16(0)
+	for i := 0; i <= hi-lo; i++ {
+		mask = mask << 1
+		mask |= 0x0001
+	}
+	for i := 0; i < lo; i++ {
+		mask = mask << 1
+	}
+	//fmt.Printf("Mask %04x ", mask)
+
+	//Apply mask
+	field := inst & mask
+
+	//Shift field down
+	field = field >> uint(lo)
+
+	//fmt.Printf("Field %04x\n", field)
+	return field
+}
+
+func Extract2C(inst uint16, hi, lo int) uint16 {
+	field := Extract1C(inst, hi, lo)
+
+	//fmt.Printf("Field %016b ", field)
+	if Extract1C(field, hi, hi) == 1 {
+		//Build sign extension
+
+		mask := uint16(0)
+		for i := 0; i <= 15-hi; i++ {
+			mask = mask << 1
+			mask |= 0x0001
+		}
+		mask = mask << uint(hi)
+		field = inst | mask
+
+	}
+	//fmt.Printf("Field %016b\n", field)
+
+	return field
 }

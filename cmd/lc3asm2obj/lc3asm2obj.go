@@ -10,7 +10,7 @@ import (
 )
 
 import (
-	"github.com/jotingen/go-lc3/asm2obj"
+	"github.com/jotingen/go-lc3/assembly"
 )
 
 var (
@@ -81,7 +81,7 @@ func processAssembly(file string) (memory []uint16) {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	return asm2obj.Assemble(assembly)
+	return assembly.Assemble(assembly)
 }
 
 func readLines(path string) ([]string, error) {

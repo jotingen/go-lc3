@@ -20,7 +20,7 @@ import (
 )
 
 import (
-	"github.com/jotingen/go-lc3/asm2obj"
+	"github.com/jotingen/go-lc3/assembly"
 	"github.com/jotingen/go-lc3/lc3"
 )
 
@@ -78,11 +78,11 @@ func reset() {
 }
 
 func processAssembly(file string) (memory []uint16) {
-	assembly, err := readLines(file)
+	assemblyCode, err := readLines(file)
 	if err != nil {
 		panic(err)
 	}
-	return asm2obj.Assemble(assembly)
+	return assembly.Assemble(assemblyCode)
 }
 
 func readLines(path string) ([]string, error) {
@@ -174,7 +174,7 @@ func (lc3 *LC3) sim(win *pixelgl.Window) {
 
 	glog.Infof("\n%s", lc3)
 
-	win.SetClosed(true)
+	//win.SetClosed(true)
 }
 
 //Keyboard
@@ -268,17 +268,21 @@ func terminal(win *pixelgl.Window, lc3 *LC3) {
 
 	termWidth, termHeight := term.Size()
 
-	buffer := make([][]rune, termHeight-12)
-	for i := range buffer {
-		buffer[i] = make([]rune, termWidth)
+	statusHeight := 12
+	dissassemblyWidth := 40
+
+	bufferOutput := make([][]rune, termHeight-statusHeight)
+	for i := range bufferOutput {
+		bufferOutput[i] = make([]rune, termWidth-dissassemblyWidth)
 	}
-	bufferCol := 0
-	bufferRow := 0
+	bufferOutputCol := 0
+	bufferOutputRow := 0
 
 	cyclesConsoleRefresh := cycles
 	timeConsoleRefresh := time.Now()
 	for !win.Closed() {
 		//Update display
+		currentPC := lc3.PC
 
 		err := term.Clear(term.ColorGreen, term.ColorBlack)
 		if err != nil {
@@ -306,41 +310,59 @@ func terminal(win *pixelgl.Window, lc3 *LC3) {
 		//Console Output
 		//When DSR[15] is 0, there is a character ready to print
 		if (memory[0xFE04]&0x8000)>>15 == 0 {
-			//Print character in DDR[7:0]
-			//fmt.Printf("%c", rune(uint8(memory[0xFE06])))
+			//Get character in DDR[7:0]
 			c := rune(uint8(memory[0xFE06]))
+
+			//Print character
 			if c == '\n' {
-				bufferRow += 1
-				bufferCol = 0
+				bufferOutputRow += 1
+				bufferOutputCol = 0
 			} else {
-				buffer[bufferRow][bufferCol] = rune(uint8(memory[0xFE06]))
-				bufferCol += 1
-				if bufferCol > termWidth-1 {
-					bufferRow += 1
-					bufferCol = 0
+				bufferOutput[bufferOutputRow][bufferOutputCol] = rune(uint8(memory[0xFE06]))
+				bufferOutputCol += 1
+				if bufferOutputCol > termWidth-dissassemblyWidth-1 {
+					bufferOutputRow += 1
+					bufferOutputCol = 0
 				}
 			}
-			if bufferRow > termHeight-12-1 {
-				for r := range buffer {
+			if bufferOutputRow > termHeight-statusHeight-1 {
+				for r := range bufferOutput {
 					if r != 0 {
-						buffer[r-1] = buffer[r]
+						bufferOutput[r-1] = bufferOutput[r]
 					}
-					if r == len(buffer)-1 {
-						buffer[r] = make([]rune, termWidth)
+					if r == len(bufferOutput)-1 {
+						bufferOutput[r] = make([]rune, termWidth-dissassemblyWidth)
 					}
 				}
-				bufferRow = termHeight - 12 - 1
+				bufferOutputRow = termHeight - statusHeight - 1
 			}
 
+			//Log it
 			if glog.V(1) {
-				glog.Info("Printed char", rune(uint8(memory[0xFE06])))
+				glog.Info("Printed char", c)
 			}
+
 			//Set DSR[15] to 1 once printed
 			memory[0xFE04] = memory[0xFE04] | 0x8000
 		}
-		for r, row := range buffer {
+		for r, row := range bufferOutput {
 
-			writeToTerm(r+12, 0, string(row))
+			writeToTerm(r+statusHeight, 0, string(row))
+		}
+
+		//Vertical Seperator
+		for r := statusHeight; r < termHeight; r++ {
+			writeToTerm(r, termWidth-dissassemblyWidth, "|")
+		}
+
+		//Dissassebly
+		midPoint := (statusHeight + termHeight) / 2
+		for r := statusHeight; r < termHeight; r++ {
+			rowPC := int(currentPC) - midPoint + r
+			if int(currentPC)-midPoint < 0 {
+				rowPC = r
+			}
+			writeToTerm(r, termWidth-dissassemblyWidth+1, fmt.Sprintf(" 0x%04x 0x%04x %s", rowPC, memory[rowPC], assembly.Dissassemble(memory[rowPC])))
 		}
 
 		err = term.Flush()
