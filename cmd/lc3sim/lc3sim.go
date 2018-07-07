@@ -1,3 +1,5 @@
+// +build linux,386 linux,amd64 windows,386 windows,amd64 darwin,amd64
+
 package main
 
 import (
@@ -414,7 +416,7 @@ func display(win *pixelgl.Window) {
 					addr := 0xC000 + y*0x0080 + x
 					imd.Color = pixel.RGB(
 						float64((memory[addr]&0x7C00)>>10)/32,
-						float64((memory[addr]&0x0380)>>5)/32,
+						float64((memory[addr]&0x03E0)>>5)/32,
 						float64((memory[addr]&0x001F)>>0)/32,
 					)
 					imd.Push(pixel.V(float64(x*SCALE), float64((Y/SCALE-y-1)*SCALE)))

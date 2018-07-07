@@ -1,5 +1,6 @@
 .ORIG x3000
 
+;Initialize Frame Counter
 AND R6, R6, #0
 
 ;Clear Buffer
@@ -8,18 +9,11 @@ JSR CLEARBUFFER
 ;Randomize Buffer
 JSR RANDOMIZEBUFFER
 
-;Load Blinker
-LD R0,BLINKER
-AND R1,R1,#0
-STR R1,R0,#0 
-STR R1,R0,#1 
-STR R1,R0,#2 
-
 ;Load Buffer
 JSR LOADBUFFER
 
-
 REPEAT
+	;Increment Frame Counter
 	ADD R6, R6, #1
 
 	;Clear Buffer
@@ -42,9 +36,6 @@ HALT
 BUFFER  .FILL 0x8200 ;buffered display address
 DISPLAY .FILL 0xC000 ;display address
 PIXELS  .FILL 0x3E00 ;15872 pixels
-;PIXELS  .FILL 0x0400 ;TEMP 1024 pixels
-
-BLINKER .FILL 0x8410
 
 ;;;; LIFE ;;;;
 ; 
@@ -80,16 +71,9 @@ LIFE_START
 
         ;Check x,y offsets, where 0,0 is top left
         ;Check -1,-1
-        ADD R2, R3, #-15
-        ADD R2, R2, #-15 ;-30
-        ADD R2, R2, #-15 ;-45
-        ADD R2, R2, #-15 ;-60
-        ADD R2, R2, #-15 ;-75
-        ADD R2, R2, #-15 ;-90
-        ADD R2, R2, #-15 ;-105
-        ADD R2, R2, #-15 ;-120
-        ADD R2, R2, #-9  ;-129
-        LDR R1, R2, #0
+	LD R2, LIFE_N128
+        ADD R2, R2, R3
+        LDR R1, R2, #-1  ;-129
         BRnp LIFE_NO_N1_N1
         ADD R0,R0,#1
         LIFE_NO_N1_N1
@@ -101,61 +85,33 @@ LIFE_START
         LIFE_NO_0_N1
 
         ;Check  1,-1
-        ADD R2, R3, #15
-        ADD R2, R2, #15 ;30
-        ADD R2, R2, #15 ;45
-        ADD R2, R2, #15 ;60
-        ADD R2, R2, #15 ;75
-        ADD R2, R2, #15 ;90
-        ADD R2, R2, #15 ;105
-        ADD R2, R2, #15 ;120
-        ADD R2, R2, #7  ;127
-        LDR R1, R2, #0
+	LD R2, LIFE_128
+        ADD R2, R2, R3
+        LDR R1, R2, #-1  ; 127
         BRnp LIFE_NO_1_N1
         ADD R0,R0,#1
         LIFE_NO_1_N1
 
         ;Check -1, 0
-        ADD R2, R3, #-15
-        ADD R2, R2, #-15 ;-30
-        ADD R2, R2, #-15 ;-45
-        ADD R2, R2, #-15 ;-60
-        ADD R2, R2, #-15 ;-75
-        ADD R2, R2, #-15 ;-90
-        ADD R2, R2, #-15 ;-105
-        ADD R2, R2, #-15 ;-120
-        ADD R2, R2, #-8  ;-128
-        LDR R1, R2, #0
+	LD R2, LIFE_N128
+        ADD R2, R2, R3
+        LDR R1, R2, #0  ;-128
         BRnp LIFE_NO_N1_0
         ADD R0,R0,#1
         LIFE_NO_N1_0
 
         ;Check  1, 0
-        ADD R2, R3, #15
-        ADD R2, R2, #15 ;30
-        ADD R2, R2, #15 ;45
-        ADD R2, R2, #15 ;60
-        ADD R2, R2, #15 ;75
-        ADD R2, R2, #15 ;90
-        ADD R2, R2, #15 ;105
-        ADD R2, R2, #15 ;120
-        ADD R2, R2, #8  ;128
-        LDR R1, R2, #0
+	LD R2, LIFE_128
+        ADD R2, R2, R3
+        LDR R1, R2, #0  ; 128
         BRnp LIFE_NO_1_0
         ADD R0,R0,#1
         LIFE_NO_1_0
 
         ;Check -1, 1
-        ADD R2, R3, #-15
-        ADD R2, R2, #-15 ;-30
-        ADD R2, R2, #-15 ;-45
-        ADD R2, R2, #-15 ;-60
-        ADD R2, R2, #-15 ;-75
-        ADD R2, R2, #-15 ;-90
-        ADD R2, R2, #-15 ;-105
-        ADD R2, R2, #-15 ;-120
-        ADD R2, R2, #-7  ;-127
-        LDR R1, R2, #0
+	LD R2, LIFE_N128
+        ADD R2, R2, R3
+        LDR R1, R2, #1  ;-127
         BRnp LIFE_NO_N1_1
         ADD R0,R0,#1
         LIFE_NO_N1_1
@@ -167,66 +123,35 @@ LIFE_START
         LIFE_NO_0_1
 
         ;Check  1, 1
-        ADD R2, R3, #15
-        ADD R2, R2, #15 ;30
-        ADD R2, R2, #15 ;45
-        ADD R2, R2, #15 ;60
-        ADD R2, R2, #15 ;75
-        ADD R2, R2, #15 ;90
-        ADD R2, R2, #15 ;105
-        ADD R2, R2, #15 ;120
-        ADD R2, R2, #9  ;129
-        LDR R1, R2, #0
+	LD R2, LIFE_128
+        ADD R2, R2, R3
+        LDR R1, R2, #1  ; 129
         BRnp LIFE_NO_1_1
         ADD R0,R0,#1
         LIFE_NO_1_1
-
-	;ADD R0, R0, #15
-	;ADD R0, R0, #15
-	;ADD R0, R0, #15
-	;ADD R0, R0, #3
-	;OUT
-	;ADD R0, R0, #-15
-	;ADD R0, R0, #-15
-	;ADD R0, R0, #-15
-	;ADD R0, R0, #-3
 
         ;R1 is now the cell being checked
         LDR R1, R3, #0
         BRnp LIFE_NOT_ALIVE
         	;Cell is alive
-		;AND R2, R2, #0
-		;ADD R2, R2, #-11
-		;OUT
         	ADD R2,R0,#-2
         	BRn LIFE_DONE ;Cell had less than 2 neighbors, dies
         	ADD R2,R0,#-3
         	BRp LIFE_DONE ;Cell had more than 3 neighbors, dies
 
         	;Send new cell to buffer       
-		;AND R2, R2, #0
-		;ADD R2, R2, #-1
-		;OUT
         	AND R2,R2,#0
         	STR R2,R4,#0 
-		;HALT
         	BR LIFE_DONE
 
         LIFE_NOT_ALIVE
         	;Cell is not alive
-		;AND R2, R2, #0
-		;ADD R2, R2, #-6
-		;OUT
         	ADD R2,R0,#-3
         	BRnp LIFE_DONE ;Cell had more or less than 3 neighbors, stays dead
 
         	;Send new cell to buffer       
-		;AND R2, R2, #0
-		;ADD R2, R2, #-1
-		;OUT
         	AND R2,R2,#0
         	STR R2,R4,#0 
-		;HALT
 
 	LIFE_DONE
 
@@ -241,7 +166,6 @@ LIFE_START
 	ADD R2,R2,R5
 	BRp LIFE_START    ;Repeat until current address > max address
 
-
 	;Restore registers
 	LD R1, LIFE_SAVE_R1
 	LD R2, LIFE_SAVE_R2
@@ -252,6 +176,9 @@ LIFE_START
 	LD R7, LIFE_SAVE_R7
 
 	RET     
+
+	LIFE_128  .FILL   0x0080 ;  128
+	LIFE_N128 .FILL   0xFF80 ; -128
 
 	; Used to save and restore registers
 	LIFE_SAVE_R0 .FILL x0000

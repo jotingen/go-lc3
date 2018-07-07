@@ -41,7 +41,7 @@ xFE08 +  TMR   Timer Register: TMR[15] is 1 if the timer has gone off, and 0 oth
 xFE0A +  TMI   Timer Interval Register: the number of milliseconds between timer ticks. 
                Setting this to 0 disables the timer, and setting it to 1 or more sets the timer.
                The emulator will use the host's clock to control updates to TMR
-xFE0C +  CLK1  Precision unit of Unix Epoch time, 1/(2^15) = ~30.5 microseconds
+xFE0C +  CLK1  Precision unit of Unix Epoch time, in milliseconds
 xFE0E +  CLK2  Unix Epoch Time, bits [15:0]
 xFE10 +  CLK3  Unix Epoch Time, bits [31:16]
                Provides a real world time value, based off of the unix epoch

@@ -322,7 +322,7 @@ func (lc3 *LC3) Step() (uint16, error) {
 	//Update clock register
 	time := time.Now()
 	//CLK1
-	lc3.Memory[0xFE0C] = uint16(uint64(time.Nanosecond()) / 1e3)
+	lc3.Memory[0xFE0C] = uint16(uint64(time.Nanosecond()) / 1e6)
 	//CLK2
 	lc3.Memory[0xFE0E] = uint16(uint64(time.Unix()) & 0xFFFF)
 	//CLK3
@@ -345,7 +345,8 @@ func (lc3 LC3) String() (s string) {
 	s += fmt.Sprintf("KBSR:%04x KBDR:%04x\n", lc3.Memory[0xFE00], lc3.Memory[0xFE02])
 	s += fmt.Sprintf(" DSR:%04x  DDR:%04x\n", lc3.Memory[0xFE04], lc3.Memory[0xFE06])
 	s += fmt.Sprintf(" TMR:%04x  TMI:%04x\n", lc3.Memory[0xFE08], lc3.Memory[0xFE0A])
-	s += fmt.Sprintf("CLK1:%04x CLK2:%04x CLK3:%04x\n", lc3.Memory[0xFE0C], lc3.Memory[0xFE0E], lc3.Memory[0xFE10])
+	s += fmt.Sprintf("CLK1:%04x CLK2:%04x CLK3:%04x (%s)\n", lc3.Memory[0xFE0C], lc3.Memory[0xFE0E], lc3.Memory[0xFE10],
+		time.Unix(int64(uint32(lc3.Memory[0xFE0E])|(uint32(lc3.Memory[0xFE10])<<16)), int64(lc3.Memory[0xFE0C])*1e6))
 	s += fmt.Sprintf(" MPR:%04x\n", lc3.Memory[0xFE12])
 	s += fmt.Sprintf(" VCR:%04x\n", lc3.Memory[0xFE14])
 	s += fmt.Sprintf(" MCR:%04x\n", lc3.Memory[0xFFFE])
