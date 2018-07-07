@@ -2,11 +2,22 @@
 
 AND R6, R6, #0
 
-	;Randomize Buffer
-	JSR RANDOMIZEBUFFER
+;Clear Buffer
+JSR CLEARBUFFER
 
-	;Load Buffer
-	JSR LOADBUFFER
+;Randomize Buffer
+JSR RANDOMIZEBUFFER
+
+;Load Blinker
+LD R0,BLINKER
+AND R1,R1,#0
+STR R1,R0,#0 
+STR R1,R0,#1 
+STR R1,R0,#2 
+
+;Load Buffer
+JSR LOADBUFFER
+
 
 REPEAT
 	ADD R6, R6, #1
@@ -23,7 +34,7 @@ REPEAT
 	;Just Repeat
 	BR REPEAT
 	;ADD R0,R6,#-1
-	;BRn REPEAT
+	;BRzn REPEAT
 
 
 HALT
@@ -31,6 +42,9 @@ HALT
 BUFFER  .FILL 0x8200 ;buffered display address
 DISPLAY .FILL 0xC000 ;display address
 PIXELS  .FILL 0x3E00 ;15872 pixels
+;PIXELS  .FILL 0x0400 ;TEMP 1024 pixels
+
+BLINKER .FILL 0x8410
 
 ;;;; LIFE ;;;;
 ; 
@@ -141,7 +155,7 @@ LIFE_START
         ADD R2, R2, #-15 ;-105
         ADD R2, R2, #-15 ;-120
         ADD R2, R2, #-7  ;-127
-        LDR R1, R3, #0
+        LDR R1, R2, #0
         BRnp LIFE_NO_N1_1
         ADD R0,R0,#1
         LIFE_NO_N1_1
@@ -162,7 +176,7 @@ LIFE_START
         ADD R2, R2, #15 ;105
         ADD R2, R2, #15 ;120
         ADD R2, R2, #9  ;129
-        LDR R1, R3, #0
+        LDR R1, R2, #0
         BRnp LIFE_NO_1_1
         ADD R0,R0,#1
         LIFE_NO_1_1
@@ -180,31 +194,39 @@ LIFE_START
         ;R1 is now the cell being checked
         LDR R1, R3, #0
         BRnp LIFE_NOT_ALIVE
-		;AND R0, R0, #0
-		;ADD R0, R0, #-11
-		;OUT
         	;Cell is alive
-        	ADD R2,R1,#-2
+		;AND R2, R2, #0
+		;ADD R2, R2, #-11
+		;OUT
+        	ADD R2,R0,#-2
         	BRn LIFE_DONE ;Cell had less than 2 neighbors, dies
-        	ADD R2,R1,#-3
+        	ADD R2,R0,#-3
         	BRp LIFE_DONE ;Cell had more than 3 neighbors, dies
-        	AND R2,R2,#0
-        	NOT R2,R2
+
         	;Send new cell to buffer       
+		;AND R2, R2, #0
+		;ADD R2, R2, #-1
+		;OUT
+        	AND R2,R2,#0
         	STR R2,R4,#0 
+		;HALT
         	BR LIFE_DONE
 
         LIFE_NOT_ALIVE
-		;AND R0, R0, #0
-		;ADD R0, R0, #-6
-		;OUT
         	;Cell is not alive
-        	ADD R2,R1,-3
+		;AND R2, R2, #0
+		;ADD R2, R2, #-6
+		;OUT
+        	ADD R2,R0,#-3
         	BRnp LIFE_DONE ;Cell had more or less than 3 neighbors, stays dead
-        	AND R2,R2,#0
-        	NOT R2,R2
+
         	;Send new cell to buffer       
+		;AND R2, R2, #0
+		;ADD R2, R2, #-1
+		;OUT
+        	AND R2,R2,#0
         	STR R2,R4,#0 
+		;HALT
 
 	LIFE_DONE
 
@@ -262,6 +284,7 @@ CLEARBUFFER
 	ADD R5,R4,R5  ;End buffer address stored in R5
 
 	AND R0,R0,#0
+	NOT R0,R0
 
 	CL_START
 		;Send clear pixel       
@@ -318,8 +341,7 @@ RANDOMIZEBUFFER
 	LD R5,PIXELS  ;Total number of pixels stored in R5
 	ADD R5,R4,R5  ;End buffer address stored in R5
 
-	AND R0,R0,#0
-	ADD R0,R0,#9 ;Initialize LFSR
+	LD  R0,CLK2 ;Load clock to "randomly" seed LFSR
 
 	RB_START
 		;Determine whether or not to create cell based on mask of LFSR
@@ -356,7 +378,8 @@ RANDOMIZEBUFFER
 
 	RET     
 
-	MASK .FILL 0x1111
+	MASK .FILL 0x0010
+	CLK2	.FILL 0xFE0E		; clock 1 register
 
 	; Used to save and restore registers
 	RB_SAVE_R0 .FILL x0000
