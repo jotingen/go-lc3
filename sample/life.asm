@@ -253,7 +253,17 @@ RANDOMIZEBUFFER
 		STR R1,R4,#0 
 
 		;Update LFSR for next pixel
+		STR R7,R6,#0
+		ADD R6,R6,#1 ;R7
+		STR R0,R6,#0
+		ADD R6,R6,#1 ;Inputs
+		ADD R6,R6,#1 ;Return
 		JSR LFSR     
+		LDR R0,R6,#-1 ;Return
+		ADD R6,R6,#-1
+		ADD R6,R6,#-1 ;Inputs
+		LDR R7,R6,#-1 ;R7
+		ADD R6,R6,#-1
 
 		;Increment display address
 		ADD R4,R4,#1 
@@ -368,19 +378,28 @@ LB_START
 ; OUT: R0 
 
 LFSR
-	;Save registers
-	ST R1, LFSR_SAVE_R1
-	ST R2, LFSR_SAVE_R2
-	ST R3, LFSR_SAVE_R3
-	ST R4, LFSR_SAVE_R4
-	ST R5, LFSR_SAVE_R5
-	ST R6, LFSR_SAVE_R6
-	ST R7, LFSR_SAVE_R7
+	;Save callers frame pointer
+	STR R5,R6,#0
+	ADD R6,R6,#1
+
+	;Set current frame pointer
+	ADD R5,R6,#0
+
+	;Save registers 0-5
+	STR R0,R6,#0
+	STR R1,R6,#1
+	STR R2,R6,#2
+	STR R3,R6,#3
+	STR R4,R6,#4
+	ADD R6,R6,#5
+
+	;Load to R0
+	LDR R0,R5,#-3
 
 	;R3 = R0
 	ADD R3,R0,#0
 
-	;Bitmask for 15
+	;Bitmask for 15 To R1
 	LD R1,LFSR_BITMASK_15
 	AND R1,R1,R3
 	BRz BIT15_WAS_0
@@ -388,7 +407,7 @@ LFSR
 	ADD R1,R1,#1
 	BIT15_WAS_0
 	
-	;Bitmask for 14
+	;Bitmask for 14 To R2
 	LD R2,LFSR_BITMASK_14
 	AND R2,R2,R3
 	BRz BIT14_WAS_0
@@ -396,17 +415,19 @@ LFSR
 	ADD R2,R2,#1
 	BIT14_WAS_0
 	
-	ADD R5,R6,#0
+		STR R7,R6,#0
+		ADD R6,R6,#1 ;R7
 	STR R1,R6,#0
 	STR R2,R6,#1
 	ADD R6,R6,#2 ;Inputs
 	ADD R6,R6,#1 ;Return
 	JSR XOR
-	LDR R0,R6,#-1 ;Return
+	LDR R1,R6,#-1 ;Return to R1
 	ADD R6,R6,#-1
 	ADD R6,R6,#-2 ;Inputs
+		LDR R7,R6,#-1 ;R7
+		ADD R6,R6,#-1
 
-	ADD R1,R0,#0
 
 	;Bitmask for 12
 	LD R2,LFSR_BITMASK_12
@@ -416,16 +437,19 @@ LFSR
 	ADD R2,R2,#1
 	BIT12_WAS_0
 	
+		STR R7,R6,#0
+		ADD R6,R6,#1 ;R7
 	STR R1,R6,#0
 	STR R2,R6,#1
 	ADD R6,R6,#2 ;Inputs
 	ADD R6,R6,#1 ;Return
 	JSR XOR
-	LDR R0,R6,#-1 ;Return
+	LDR R1,R6,#-1 ;Return to R1
 	ADD R6,R6,#-1
 	ADD R6,R6,#-2 ;Inputs
+		LDR R7,R6,#-1 ;R7
+		ADD R6,R6,#-1
 
-	ADD R1,R0,#0
 
 	;Bitmask for 3
 	LD R2,LFSR_BITMASK_03
@@ -435,29 +459,39 @@ LFSR
 	ADD R2,R2,#1
 	BIT03_WAS_0
 
+		STR R7,R6,#0
+		ADD R6,R6,#1 ;R7
 	STR R1,R6,#0
 	STR R2,R6,#1
 	ADD R6,R6,#2 ;Inputs
 	ADD R6,R6,#1 ;Return
 	JSR XOR
-	LDR R0,R6,#-1 ;Return
+	LDR R1,R6,#-1 ;Return to R1
 	ADD R6,R6,#-1
 	ADD R6,R6,#-2 ;Inputs
+		LDR R7,R6,#-1 ;R7
+		ADD R6,R6,#-1
 
 	;R3 = R3 << 1
 	ADD R3,R3,R3
 
 	;Add shifted register to feedback
-	ADD R0,R0,R3
+	ADD R0,R1,R3
+
+	;Save result to callers return
+	STR R0,R5,#-2
 
 	;Restore registers
-	LD R1, LFSR_SAVE_R1
-	LD R2, LFSR_SAVE_R2
-	LD R3, LFSR_SAVE_R3
-	LD R4, LFSR_SAVE_R4
-	LD R5, LFSR_SAVE_R5
-	LD R6, LFSR_SAVE_R6
-	LD R7, LFSR_SAVE_R7
+	LDR R4,R6,#-1
+	LDR R3,R6,#-2
+	LDR R2,R6,#-3
+	LDR R1,R6,#-4
+	LDR R0,R6,#-5 
+	ADD R6,R6,#-5
+
+	;Restore callers frame pointer
+	LDR R5,R6,#-1
+	ADD R6,R6,#-1
 
 	RET     
 
@@ -465,16 +499,6 @@ LFSR
 	LFSR_BITMASK_14 .FILL x4000
 	LFSR_BITMASK_12 .FILL x1000
 	LFSR_BITMASK_03 .FILL x0008
-
-	; Used to save and restore registers
-	LFSR_SAVE_R0 .FILL x0000
-	LFSR_SAVE_R1 .FILL x0000
-	LFSR_SAVE_R2 .FILL x0000
-	LFSR_SAVE_R3 .FILL x0000
-	LFSR_SAVE_R4 .FILL x0000
-	LFSR_SAVE_R5 .FILL x0000
-	LFSR_SAVE_R6 .FILL x0000
-	LFSR_SAVE_R7 .FILL x0000
 
 ;;;; XOR ;;;;
 ; 
@@ -501,13 +525,6 @@ XOR
 	STR R4,R6,#4
 	ADD R6,R6,#5
 
-	; clear registers to help debug
-	AND R0,R0,#0
-	AND R1,R1,#0
-	AND R2,R2,#0
-	AND R3,R3,#0
-	AND R4,R4,#0
-
 	;Load A to R0
 	LDR R0,R5,#-4
 
@@ -533,7 +550,6 @@ XOR
 
 	;Save result to callers return
 	STR R0,R5,#-2
-
 
 	;Restore registers
 	LDR R4,R6,#-1
