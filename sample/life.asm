@@ -1,7 +1,8 @@
 .ORIG x3000
 
-;Initialize Frame Counter
-AND R6, R6, #0
+;Initialize stack
+LD R5, STACK
+LD R6, STACK
 
 ;Clear Buffer
 JSR CLEARBUFFER
@@ -13,9 +14,6 @@ JSR RANDOMIZEBUFFER
 JSR LOADBUFFER
 
 REPEAT
-	;Increment Frame Counter
-	ADD R6, R6, #1
-
 	;Clear Buffer
 	JSR CLEARBUFFER
 
@@ -27,12 +25,11 @@ REPEAT
 
 	;Just Repeat
 	BR REPEAT
-	;ADD R0,R6,#-1
-	;BRzn REPEAT
 
 
 HALT
 
+STACK   .FILL 0x5000 ;make a stack here, Room for 20480 items until we hit the display buffer
 BUFFER  .FILL 0x8200 ;buffered display address
 DISPLAY .FILL 0xC000 ;display address
 PIXELS  .FILL 0x3E00 ;15872 pixels
@@ -44,151 +41,123 @@ PIXELS  .FILL 0x3E00 ;15872 pixels
 
 LIFE
 
-	;Save registers
-	ST R1, LIFE_SAVE_R1
-	ST R2, LIFE_SAVE_R2
-	ST R3, LIFE_SAVE_R3
-	ST R4, LIFE_SAVE_R4
-	ST R5, LIFE_SAVE_R5
-	ST R6, LIFE_SAVE_R6
-	ST R7, LIFE_SAVE_R7
-                
 	;Load buffer display into display space
-	LD R3,DISPLAY ;Display address stored in R3
-	LD R4,BUFFER  ;Buffer address stored in R4
-	LD R5,PIXELS  ;Total number of pixels stored in R5
-	ADD R5,R4,R5  ;End buffer address stored in R5
+	LD R2,DISPLAY ;Display address stored in R2
+	LD R3,BUFFER  ;Buffer address stored in R3
+	LD R4,PIXELS  ;Total number of pixels stored in R4
+	ADD R4,R3,R4  ;End buffer address stored in R4
 
 LIFE_START   	
         ;R0 is the neighbor count
 	;R1 is the neighbor being checked
-	;R2 is scratch for generating the neighbor address
-	;R3 is the current cell address in the display
-	;R4 is the new cell address in the buffer
+	;R2 is the current cell address in the display
+	;R3 is the new cell address in the buffer
 
 	;Initialize R0 to be the neighbor count
 	AND R0, R0, #0
 
         ;Check x,y offsets, where 0,0 is top left
         ;Check -1,-1
-	LD R2, LIFE_N128
-        ADD R2, R2, R3
-        LDR R1, R2, #-1  ;-129
+	LD R1, LIFE_N128
+        ADD R1, R1, R2
+        LDR R1, R1, #-1  ;-129
         BRnp LIFE_NO_N1_N1
         ADD R0,R0,#1
         LIFE_NO_N1_N1
 
         ;Check  0,-1
-        LDR R1, R3, #-1
+        LDR R1, R2, #-1
         BRnp LIFE_NO_0_N1
         ADD R0,R0,#1
         LIFE_NO_0_N1
 
         ;Check  1,-1
-	LD R2, LIFE_128
-        ADD R2, R2, R3
-        LDR R1, R2, #-1  ; 127
+	LD R1, LIFE_128
+        ADD R1, R1, R2
+        LDR R1, R1, #-1  ; 127
         BRnp LIFE_NO_1_N1
         ADD R0,R0,#1
         LIFE_NO_1_N1
 
         ;Check -1, 0
-	LD R2, LIFE_N128
-        ADD R2, R2, R3
-        LDR R1, R2, #0  ;-128
+	LD R1, LIFE_N128
+        ADD R1, R1, R2
+        LDR R1, R1, #0  ;-128
         BRnp LIFE_NO_N1_0
         ADD R0,R0,#1
         LIFE_NO_N1_0
 
         ;Check  1, 0
-	LD R2, LIFE_128
-        ADD R2, R2, R3
-        LDR R1, R2, #0  ; 128
+	LD R1, LIFE_128
+        ADD R1, R1, R2
+        LDR R1, R1, #0  ; 128
         BRnp LIFE_NO_1_0
         ADD R0,R0,#1
         LIFE_NO_1_0
 
         ;Check -1, 1
-	LD R2, LIFE_N128
-        ADD R2, R2, R3
-        LDR R1, R2, #1  ;-127
+	LD R1, LIFE_N128
+        ADD R1, R1, R2
+        LDR R1, R1, #1  ;-127
         BRnp LIFE_NO_N1_1
         ADD R0,R0,#1
         LIFE_NO_N1_1
 
         ;Check  0, 1
-        LDR R1, R3, #1
+        LDR R1, R2, #1
         BRnp LIFE_NO_0_1
         ADD R0,R0,#1
         LIFE_NO_0_1
 
         ;Check  1, 1
-	LD R2, LIFE_128
-        ADD R2, R2, R3
-        LDR R1, R2, #1  ; 129
+	LD R1, LIFE_128
+        ADD R1, R1, R2
+        LDR R1, R1, #1  ; 129
         BRnp LIFE_NO_1_1
         ADD R0,R0,#1
         LIFE_NO_1_1
 
         ;R1 is now the cell being checked
-        LDR R1, R3, #0
+        LDR R1, R2, #0
         BRnp LIFE_NOT_ALIVE
         	;Cell is alive
-        	ADD R2,R0,#-2
+        	ADD R1,R0,#-2
         	BRn LIFE_DONE ;Cell had less than 2 neighbors, dies
-        	ADD R2,R0,#-3
+        	ADD R1,R0,#-3
         	BRp LIFE_DONE ;Cell had more than 3 neighbors, dies
 
         	;Send new cell to buffer       
-        	AND R2,R2,#0
-        	STR R2,R4,#0 
+        	AND R1,R1,#0
+        	STR R1,R3,#0 
         	BR LIFE_DONE
 
         LIFE_NOT_ALIVE
         	;Cell is not alive
-        	ADD R2,R0,#-3
+        	ADD R1,R0,#-3
         	BRnp LIFE_DONE ;Cell had more or less than 3 neighbors, stays dead
 
         	;Send new cell to buffer       
-        	AND R2,R2,#0
-        	STR R2,R4,#0 
+        	AND R1,R1,#0
+        	STR R1,R3,#0 
 
 	LIFE_DONE
 
 	;Increment display address
-	ADD R3,R3,#1 
+	ADD R2,R2,#1 
 	;Increment buffer address
-	ADD R4,R4,#1 
+	ADD R3,R3,#1 
 
 	;Determine if we are at the last pixel
-	NOT R2,R4    ;Subtract current address from max address
-	ADD R2,R2,#1
-	ADD R2,R2,R5
+	NOT R1,R3    ;Subtract current address from max address
+	ADD R1,R1,#1
+	ADD R1,R1,R4
 	BRp LIFE_START    ;Repeat until current address > max address
-
-	;Restore registers
-	LD R1, LIFE_SAVE_R1
-	LD R2, LIFE_SAVE_R2
-	LD R3, LIFE_SAVE_R3
-	LD R4, LIFE_SAVE_R4
-	LD R5, LIFE_SAVE_R5
-	LD R6, LIFE_SAVE_R6
-	LD R7, LIFE_SAVE_R7
 
 	RET     
 
 	LIFE_128  .FILL   0x0080 ;  128
 	LIFE_N128 .FILL   0xFF80 ; -128
 
-	; Used to save and restore registers
-	LIFE_SAVE_R0 .FILL x0000
-	LIFE_SAVE_R1 .FILL x0000
-	LIFE_SAVE_R2 .FILL x0000
-	LIFE_SAVE_R3 .FILL x0000
-	LIFE_SAVE_R4 .FILL x0000
-	LIFE_SAVE_R5 .FILL x0000
-	LIFE_SAVE_R6 .FILL x0000
-	LIFE_SAVE_R7 .FILL x0000
 
 ;;;; CLEAR BUFFER ;;;;
 ; 
@@ -198,13 +167,18 @@ LIFE_START
 CLEARBUFFER
 
 	;Save registers
-	ST R1, CL_SAVE_R1
-	ST R2, CL_SAVE_R2
-	ST R3, CL_SAVE_R3
-	ST R4, CL_SAVE_R4
-	ST R5, CL_SAVE_R5
-	ST R6, CL_SAVE_R6
-	ST R7, CL_SAVE_R7
+	ADD R6,R6,#1
+	STR R0, R6, #0
+	ADD R6,R6,#1
+	STR R1, R6, #0
+	ADD R6,R6,#1
+	STR R2, R6, #0
+	ADD R6,R6,#1
+	STR R3, R6, #0
+	ADD R6,R6,#1
+	STR R4, R6, #0
+	ADD R6,R6,#1
+	STR R5, R6, #0
 
 	LD R4,BUFFER  ;Buffer address stored in R4
 	LD R5,PIXELS  ;Total number of pixels stored in R5
@@ -227,25 +201,21 @@ CLEARBUFFER
 		BRp CL_START    ;Repeat until current address > max address
 
 	;Restore registers
-	LD R1, CL_SAVE_R1
-	LD R2, CL_SAVE_R2
-	LD R3, CL_SAVE_R3
-	LD R4, CL_SAVE_R4
-	LD R5, CL_SAVE_R5
-	LD R6, CL_SAVE_R6
-	LD R7, CL_SAVE_R7
+	LDR R5, R6, #0
+	ADD R6,R6,#-1
+	LDR R4, R6, #0
+	ADD R6,R6,#-1
+	LDR R3, R6, #0
+	ADD R6,R6,#-1
+	LDR R2, R6, #0
+	ADD R6,R6,#-1
+	LDR R1, R6, #0
+	ADD R6,R6,#-1
+	LDR R0, R6, #0
+	ADD R6,R6,#-1
 
 	RET     
 
-	; Used to save and restore registers
-	CL_SAVE_R0 .FILL x0000
-	CL_SAVE_R1 .FILL x0000
-	CL_SAVE_R2 .FILL x0000
-	CL_SAVE_R3 .FILL x0000
-	CL_SAVE_R4 .FILL x0000
-	CL_SAVE_R5 .FILL x0000
-	CL_SAVE_R6 .FILL x0000
-	CL_SAVE_R7 .FILL x0000
 
 
 ;;;; RANDOMIZE BUFFER ;;;;
@@ -426,7 +396,15 @@ LFSR
 	ADD R2,R2,#1
 	BIT14_WAS_0
 	
+	ADD R5,R6,#0
+	STR R1,R6,#0
+	STR R2,R6,#1
+	ADD R6,R6,#2 ;Inputs
+	ADD R6,R6,#1 ;Return
 	JSR XOR
+	LDR R0,R6,#-1 ;Return
+	ADD R6,R6,#-1
+	ADD R6,R6,#-2 ;Inputs
 
 	ADD R1,R0,#0
 
@@ -438,7 +416,14 @@ LFSR
 	ADD R2,R2,#1
 	BIT12_WAS_0
 	
+	STR R1,R6,#0
+	STR R2,R6,#1
+	ADD R6,R6,#2 ;Inputs
+	ADD R6,R6,#1 ;Return
 	JSR XOR
+	LDR R0,R6,#-1 ;Return
+	ADD R6,R6,#-1
+	ADD R6,R6,#-2 ;Inputs
 
 	ADD R1,R0,#0
 
@@ -450,7 +435,14 @@ LFSR
 	ADD R2,R2,#1
 	BIT03_WAS_0
 
+	STR R1,R6,#0
+	STR R2,R6,#1
+	ADD R6,R6,#2 ;Inputs
+	ADD R6,R6,#1 ;Return
 	JSR XOR
+	LDR R0,R6,#-1 ;Return
+	ADD R6,R6,#-1
+	ADD R6,R6,#-2 ;Inputs
 
 	;R3 = R3 << 1
 	ADD R3,R3,R3
@@ -486,48 +478,73 @@ LFSR
 
 ;;;; XOR ;;;;
 ; 
-; R0 = R1 ^ R2
+; X = A ^ B
+; X = !(!(A & !(A & B)) & !(B & !(A & B)))
 ;
-; IN:  R1 
-; IN:  R2 
-; OUT: R0 
+; IN:  A 
+; IN:  B 
+; OUT: X 
 
 XOR
-	;Save registers
-	ST R1, XOR_SAVE_R1
-	ST R2, XOR_SAVE_R2
-	ST R3, XOR_SAVE_R3
-	ST R4, XOR_SAVE_R4
-	ST R5, XOR_SAVE_R5
-	ST R6, XOR_SAVE_R6
-	ST R7, XOR_SAVE_R7
+	;Save callers frame pointer
+	STR R5,R6,#0
+	ADD R6,R6,#1
 
-	AND R3,R1,R2
-	NOT R3,R3
-	AND R4,R1,R3
-	NOT R4,R4
-	AND R5,R2,R3
-	NOT R5,R5
-	AND R0,R4,R5
+	;Set current frame pointer
+	ADD R5,R6,#0
+
+	;Save registers 0-5
+	STR R0,R6,#0
+	STR R1,R6,#1
+	STR R2,R6,#2
+	STR R3,R6,#3
+	STR R4,R6,#4
+	ADD R6,R6,#5
+
+	; clear registers to help debug
+	AND R0,R0,#0
+	AND R1,R1,#0
+	AND R2,R2,#0
+	AND R3,R3,#0
+	AND R4,R4,#0
+
+	;Load A to R0
+	LDR R0,R5,#-4
+
+	;Load B to R1
+	LDR R1,R5,#-3
+
+	;Put !(A & B) onto R2
+	
+	AND R2,R0,R1
+	NOT R2,R2
+
+	;Put !(A & !(A & B)) onto R0
+	AND R0,R0,R2
 	NOT R0,R0
 
+	;Put !(B & !(A & B)) onto R1
+	AND R1,R1,R2
+	NOT R1,R1
+
+	;Put !(!(A & !(A & B)) & !(B & !(A & B))) onto R0
+	AND R0,R0,R1
+	NOT R0,R0
+
+	;Save result to callers return
+	STR R0,R5,#-2
+
+
 	;Restore registers
-	LD R1, XOR_SAVE_R1
-	LD R2, XOR_SAVE_R2
-	LD R3, XOR_SAVE_R3
-	LD R4, XOR_SAVE_R4
-	LD R5, XOR_SAVE_R5
-	LD R6, XOR_SAVE_R6
-	LD R7, XOR_SAVE_R7
+	LDR R4,R6,#-1
+	LDR R3,R6,#-2
+	LDR R2,R6,#-3
+	LDR R1,R6,#-4
+	LDR R0,R6,#-5
+	ADD R6,R6,#-5
+
+	;Restore callers frame pointer
+	LDR R5,R6,#-1
+	ADD R6,R6,#-1
 
 	RET     
-
-	; Used to save and restore registers
-	XOR_SAVE_R0 .FILL x0000
-	XOR_SAVE_R1 .FILL x0000
-	XOR_SAVE_R2 .FILL x0000
-	XOR_SAVE_R3 .FILL x0000
-	XOR_SAVE_R4 .FILL x0000
-	XOR_SAVE_R5 .FILL x0000
-	XOR_SAVE_R6 .FILL x0000
-	XOR_SAVE_R7 .FILL x0000
